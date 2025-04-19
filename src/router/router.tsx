@@ -1,8 +1,12 @@
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
-import { Suspense } from "react";
 import LoginPage from "../pages/login";
-import React from "react";
 import MainLayout from "@/components/layout/main-layout";
+import Dashboard from "@/pages/dashboard";
+import Appointment from "@/pages/appointment";
+import Availability from "@/pages/availability";
+import RecordsPage from "@/pages/records";
+import CommunityPage from "@/pages/community";
+import SettingsPage from "@/pages/settings";
 
 // const withSuspense = (
 //   Component: React.LazyExoticComponent<React.ComponentType<any>>
@@ -22,6 +26,32 @@ const router = createBrowserRouter([
   {
     path: "/",
     element: <MainLayout />,
+    children: [
+      {
+        index: true,
+        element: <Dashboard />,
+      },
+      {
+        path: "/appointments",
+        element: <Appointment />,
+      },
+      {
+        path: "/availability",
+        element: <Availability />,
+      },
+      {
+        path: "/records",
+        element: <RecordsPage />,
+      },
+      {
+        path: "/community",
+        element: <CommunityPage />,
+      },
+      {
+        path: "/settings",
+        element: <SettingsPage />,
+      },
+    ],
   },
   {
     path: "/login",
