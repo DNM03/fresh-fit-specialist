@@ -1,7 +1,15 @@
-import { ChartColumn, Handshake, House, LogOut, Settings } from "lucide-react";
+import {
+  CalendarCheck2,
+  FileText,
+  Handshake,
+  History,
+  House,
+  Settings,
+} from "lucide-react";
 import app_logo from "@/assets/images/freshfit_logo.png";
 
 import { useLocation, useNavigate } from "react-router-dom";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 function LeftSidebar() {
   const location = useLocation();
@@ -13,14 +21,24 @@ function LeftSidebar() {
       path: "/",
     },
     {
+      label: "Appointments",
+      icon: <CalendarCheck2 size={20} />,
+      path: "/appointments",
+    },
+    {
+      label: "Availability",
+      icon: <History size={20} />,
+      path: "/availability",
+    },
+    {
+      label: "Records",
+      icon: <FileText size={20} />,
+      path: "/records",
+    },
+    {
       label: "Community",
       icon: <Handshake size={20} />,
       path: "/community",
-    },
-    {
-      label: "Statistics",
-      icon: <ChartColumn size={20} />,
-      path: "/statistics",
     },
     {
       label: "Settings",
@@ -60,13 +78,23 @@ function LeftSidebar() {
           </div>
         </div>
       ))}
-      <button
+      {/* <button
         className="mt-auto mb-4 flex flex-row items-center gap-x-2 bg-red-600 w-48 justify-center mx-4 text-white p-[6px] rounded-md hover:bg-red-500"
         onClick={() => navigate("/login")}
       >
         <LogOut size={18} />
         Log out
-      </button>
+      </button> */}
+      <div className="mt-auto flex flex-row items-center gap-x-4 w-full px-4 border-t pt-4">
+        <Avatar>
+          <AvatarImage src="https://github.com/shadcn.png" />
+          <AvatarFallback>CN</AvatarFallback>
+        </Avatar>
+        <div>
+          <p className="font-bold text-sm">Dr. John Doe</p>
+          <p className="text-sm">Heart</p>
+        </div>
+      </div>
     </div>
   );
 }
