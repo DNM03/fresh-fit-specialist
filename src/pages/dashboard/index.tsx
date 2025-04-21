@@ -26,7 +26,7 @@ import { format } from "date-fns";
 import { Link } from "react-router-dom";
 
 export default function Dashboard() {
-  const [activeTab, setActiveTab] = useState("overview");
+  const [, setActiveTab] = useState("overview");
 
   const stats = [
     {

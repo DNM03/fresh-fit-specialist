@@ -14,7 +14,7 @@ import { format } from "date-fns";
 
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { PatientSelector } from "@/features/records/patient-selector";
 import { PatientDetailCard } from "@/features/records/patient-detail-card";
 import { RecordTypeFilter } from "@/features/records/record-type-filter";
@@ -23,14 +23,12 @@ import { AppointmentsList } from "@/features/records/appointments-list";
 import { MedicalRecordsList } from "@/features/records/medical-records-list";
 
 export default function RecordsPage() {
-  const navigate = useNavigate();
   const searchParams = useSearchParams();
   const patientIdParam = searchParams[0].get("patientId");
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterRecordType, setFilterRecordType] = useState<string>("all");
-  const [viewType, setViewType] = useState<string>("timeline");
   const [selectedPatient, setSelectedPatient] = useState<string | null>(
     patientIdParam
   );

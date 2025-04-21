@@ -1,0 +1,425 @@
+import React, { useEffect, useState, useRef } from "react";
+import { ZegoExpressEngine } from "zego-express-engine-webrtc";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Mic,
+  MicOff,
+  Video,
+  VideoOff,
+  PhoneOff,
+  LayoutGrid,
+  Settings,
+  Users,
+  MessageSquare,
+  Share2,
+  MoreVertical,
+} from "lucide-react";
+
+interface StreamInfo {
+  streamID: string;
+  extraInfo?: string;
+}
+
+interface RemoteStreams {
+  [streamID: string]: MediaStream;
+}
+
+const VideoCallPage: React.FC = () => {
+  const [zegoEngine, setZegoEngine] = useState<ZegoExpressEngine | null>(null);
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [remoteStreams, setRemoteStreams] = useState<RemoteStreams>({});
+  const [isMicOn, setIsMicOn] = useState<boolean>(true);
+  const [isCameraOn, setIsCameraOn] = useState<boolean>(true);
+  const [roomID, setRoomID] = useState<string>("");
+  const [isInRoom, setIsInRoom] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const localVideoRef = useRef<HTMLVideoElement>(null);
+  const remoteVideoRefs = useRef<{ [key: string]: HTMLVideoElement | null }>(
+    {}
+  );
+  const [showChat, setShowChat] = useState<boolean>(false);
+
+  const appID: number = parseInt(import.meta.env.VITE_ZEGOCLOUD_APP_ID);
+
+  const userID: string = `doctor_john_doe`;
+  const userName: string = "Dr. Smith";
+
+  useEffect(() => {
+    const zg = new ZegoExpressEngine(
+      appID,
+      import.meta.env.VITE_ZEGOCLOUD_SERVER_URL
+    );
+    setZegoEngine(zg);
+
+    zg.on(
+      "roomStreamUpdate",
+      async (
+        _roomID: string,
+        updateType: "ADD" | "DELETE",
+        streamList: StreamInfo[]
+      ) => {
+        console.log("Stream update:", updateType, streamList);
+
+        if (updateType === "ADD") {
+          for (const stream of streamList) {
+            try {
+              const remoteStream = await zg.startPlayingStream(stream.streamID);
+              setRemoteStreams((prev) => ({
+                ...prev,
+                [stream.streamID]: remoteStream,
+              }));
+            } catch (error) {
+              console.error("Failed to play remote stream:", error);
+            }
+          }
+        } else if (updateType === "DELETE") {
+          for (const stream of streamList) {
+            zg.stopPlayingStream(stream.streamID);
+            setRemoteStreams((prev) => {
+              const updated = { ...prev };
+              delete updated[stream.streamID];
+              return updated;
+            });
+          }
+        }
+      }
+    );
+
+    zg.on(
+      "roomStateUpdate",
+      (
+        _roomID: string,
+        state: string,
+        errorCode: number,
+        _extendedData: any
+      ) => {
+        console.log("Room state update:", state, errorCode);
+      }
+    );
+
+    return () => {
+      if (localStream) {
+        localStream.getTracks().forEach((track) => track.stop());
+        zg.destroyStream(localStream);
+      }
+
+      Object.keys(remoteStreams).forEach((streamID) => {
+        zg.stopPlayingStream(streamID);
+      });
+
+      if (isInRoom) {
+        zg.logoutRoom(roomID);
+      }
+
+      Object.values(remoteVideoRefs.current).forEach((el) => {
+        if (el) el.srcObject = null;
+      });
+
+      zg.off("roomStreamUpdate");
+      zg.off("roomStateUpdate");
+    };
+  }, []);
+
+  useEffect(() => {
+    Object.entries(remoteStreams).forEach(([streamID, stream]) => {
+      const videoElement = remoteVideoRefs.current[streamID];
+      if (videoElement && stream) {
+        videoElement.srcObject = stream;
+      }
+    });
+  }, [remoteStreams]);
+
+  //   // Get token from your backend/service
+  //   const getToken = async (): Promise<string> => {
+  //     // In a real implementation, you would fetch this from your backend
+  //     // This is a placeholder function that simulates getting a token
+  //     return new Promise<string>((resolve) => {
+  //       // Simulating API call delay
+  //       setTimeout(() => {
+  //         // In production, replace this with an actual API call
+  //         resolve("your-token-will-be-here");
+  //       }, 500);
+  //     });
+  //   };
+
+  const startCall = async (): Promise<void> => {
+    if (!zegoEngine || !roomID.trim()) return;
+
+    try {
+      setIsLoading(true);
+
+      // This is a placeholder token. In a real application, you should fetch this from your backend.
+      const token = import.meta.env.VITE_ZEGOCLOUD_TEMP_TOKEN;
+
+      await zegoEngine.loginRoom(roomID, token, { userID, userName });
+      setIsInRoom(true);
+
+      const stream = await zegoEngine.createStream({
+        camera: {
+          audio: true,
+          video: true,
+        },
+      });
+      setLocalStream(stream);
+
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = stream;
+      }
+
+      const streamID = `${roomID}_${userID}_${Date.now()}`;
+      zegoEngine.startPublishingStream(streamID, stream);
+
+      setIsLoading(false);
+    } catch (error) {
+      console.error("Failed to start call:", error);
+      setIsLoading(false);
+    }
+  };
+
+  const endCall = async (): Promise<void> => {
+    if (!zegoEngine || !isInRoom) return;
+
+    try {
+      if (localStream) {
+        zegoEngine.stopPublishingStream(`${roomID}_${userID}_${Date.now()}`);
+        zegoEngine.destroyStream(localStream);
+        setLocalStream(null);
+      }
+
+      Object.keys(remoteStreams).forEach((streamID) => {
+        zegoEngine.stopPlayingStream(streamID);
+      });
+      setRemoteStreams({});
+
+      zegoEngine.logoutRoom(roomID);
+      setIsInRoom(false);
+    } catch (error) {
+      console.error("Failed to end call:", error);
+    }
+  };
+
+  const toggleMicrophone = async (): Promise<void> => {
+    if (!localStream) return;
+
+    try {
+      const newMicState = !isMicOn;
+      zegoEngine?.muteMicrophone(!newMicState);
+      setIsMicOn(newMicState);
+    } catch (error) {
+      console.error("Failed to toggle microphone:", error);
+    }
+  };
+
+  const toggleCamera = async (): Promise<void> => {
+    if (!localStream) return;
+
+    try {
+      const newState = !isCameraOn;
+      zegoEngine?.mutePublishStreamVideo(localStream as MediaStream, !newState);
+      setIsCameraOn(newState);
+    } catch (error) {
+      console.error("Failed to toggle camera:", error);
+    }
+  };
+  const toggleChat = () => {
+    setShowChat(!showChat);
+  };
+
+  const renderLayout = () => {
+    const remoteStreamArray = Object.entries(remoteStreams);
+    const hasRemoteStreams = remoteStreamArray.length > 0;
+
+    if (!hasRemoteStreams) {
+      return (
+        <div className="flex items-center justify-center flex-1 ">
+          <div className="relative w-3/4 h-3/4 max-w-4xl">
+            <video
+              ref={localVideoRef}
+              autoPlay
+              playsInline
+              muted
+              className="w-full h-full object-cover rounded-lg"
+            />
+            <div className="absolute bottom-4 left-4 bg-black/50 text-white px-3 py-1 rounded text-sm flex items-center gap-2">
+              {!isMicOn && <MicOff size={16} className="text-red-500" />}
+              <span>You (Doctor)</span>
+            </div>
+          </div>
+        </div>
+      );
+    } else {
+      return (
+        <div className="flex flex-1">
+          <div className="relative flex-1">
+            {remoteStreamArray.map(([streamID, _stream], _idx) => (
+              <div key={streamID} className="h-full w-full relative">
+                <video
+                  ref={(el) => {
+                    remoteVideoRefs.current[streamID] = el;
+                  }}
+                  autoPlay
+                  playsInline
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute bottom-4 left-4  text-white px-3 py-1 rounded text-sm flex items-center gap-2">
+                  <span>Patient</span>
+                </div>
+              </div>
+            ))}
+
+            <div className="absolute top-4 right-4 w-64 h-40 shadow-lg rounded-lg overflow-hidden border-2 border-white/20">
+              <video
+                ref={localVideoRef}
+                autoPlay
+                playsInline
+                muted
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute bottom-2 left-2 bg-black/50 text-white px-2 py-1 rounded text-xs flex items-center gap-1">
+                {!isMicOn && <MicOff size={12} className="text-red-500" />}
+                <span>You</span>
+              </div>
+            </div>
+          </div>
+
+          {showChat && (
+            <div className="w-80 bg-slate-800 border-l border-slate-700 flex flex-col">
+              <div className="p-3 border-b border-slate-700 font-medium text-slate-200">
+                Chat
+              </div>
+              <div className="flex-1 p-4 overflow-y-auto">
+                <div className="text-slate-400 text-sm italic text-center">
+                  No messages yet
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+  };
+
+  return (
+    <div className="flex flex-col h-screen text-primary">
+      <div className="h-14  flex items-center justify-between px-4 ">
+        <div className="flex items-center gap-3">
+          <h1 className="font-medium text-lg">Doctor Video Console</h1>
+          {isInRoom && (
+            <div className="bg-green-600/20 text-green-400 text-xs px-2 py-1 rounded-full flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full bg-green-500"></span>
+              <span className="text-primary">Room: {roomID}</span>
+            </div>
+          )}
+        </div>
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" className="text-primary">
+            <Users size={18} />
+          </Button>
+          <Button variant="ghost" size="icon" className="text-primary">
+            <Settings size={18} />
+          </Button>
+        </div>
+      </div>
+
+      {!isInRoom ? (
+        <div className="flex flex-col items-center justify-center flex-1  p-6">
+          <div className="w-full max-w-md bg-white p-6 rounded-lg shadow-lg">
+            <h2 className="text-xl font-medium mb-6 text-center">
+              Join Consultation
+            </h2>
+            <Card>
+              <CardContent className="space-y-6">
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Room ID
+                  </label>
+                  <Input
+                    className="w-full bg-white-700 border-primary text-primary"
+                    placeholder="Enter room ID"
+                    value={roomID}
+                    onChange={(e) => setRoomID(e.target.value)}
+                  />
+                </div>
+                <Button
+                  className="w-full bg-primary hover:bg-green-700"
+                  disabled={isLoading || !roomID.trim()}
+                  onClick={startCall}
+                >
+                  {isLoading ? "Connecting..." : "Start Consultation"}
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      ) : (
+        <>
+          {renderLayout()}
+
+          <div className="h-20  flex items-center justify-between px-6">
+            <div className="flex items-center gap-3">
+              <Button variant="ghost" size="icon" className="text-primary">
+                <LayoutGrid size={20} />
+              </Button>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <Button
+                variant={isMicOn ? "outline" : "destructive"}
+                size="icon"
+                className={`rounded-full h-12 w-12 ${
+                  isMicOn ? "bg-primary  border-primary text-white" : ""
+                }`}
+                onClick={toggleMicrophone}
+              >
+                {isMicOn ? <Mic /> : <MicOff />}
+              </Button>
+
+              <Button
+                variant={isCameraOn ? "outline" : "destructive"}
+                size="icon"
+                className={`rounded-full h-12 w-12 ${
+                  isCameraOn ? "bg-primary  border-primary text-white" : ""
+                }`}
+                onClick={toggleCamera}
+              >
+                {isCameraOn ? <Video /> : <VideoOff />}
+              </Button>
+
+              <Button
+                variant="destructive"
+                size="icon"
+                className="rounded-full h-12 w-12"
+                onClick={endCall}
+              >
+                <PhoneOff />
+              </Button>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                className={`text-primary  ${
+                  showChat ? "bg-primary text-white" : ""
+                }`}
+                onClick={toggleChat}
+              >
+                <MessageSquare size={20} />
+              </Button>
+              <Button variant="ghost" size="icon" className="text-primary">
+                <Share2 size={20} />
+              </Button>
+              <Button variant="ghost" size="icon" className="text-primary">
+                <MoreVertical size={20} />
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+export default VideoCallPage;

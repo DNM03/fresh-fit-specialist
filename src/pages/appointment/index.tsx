@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Calendar, Clock, Search, Plus } from "lucide-react";
+import { Calendar, Clock, Search } from "lucide-react";
 import { format } from "date-fns";
 
 export default function Appointment() {
@@ -147,10 +147,10 @@ export default function Appointment() {
     <div className="container mx-auto py-6 px-4">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Appointments</h1>
-        <Button>
+        {/* <Button>
           <Plus className="h-4 w-4 mr-2" />
           New Schedule
-        </Button>
+        </Button> */}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-6">
