@@ -35,7 +35,7 @@ export function CreatePostForm({ onPostCreated }: CreatePostFormProps) {
     setIsSubmitting(true);
 
     try {
-      const newPost = createPost(content);
+      createPost(content);
 
       //   toast({
       //     title: "Post submitted",

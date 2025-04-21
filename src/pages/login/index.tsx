@@ -14,7 +14,6 @@ function LoginPage() {
     control,
     handleSubmit,
     formState: { errors },
-    reset,
   } = useForm({
     resolver: zodResolver(
       z.object({

@@ -67,7 +67,7 @@ const initialReviews = [
 ];
 
 export function ReviewsSettings() {
-  const [reviews, setReviews] = useState(initialReviews);
+  const [reviews] = useState(initialReviews);
   const [filter, setFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
 
