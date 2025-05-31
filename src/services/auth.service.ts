@@ -188,6 +188,8 @@ const logout = async (): Promise<void> => {
     const refreshToken = getRefreshToken();
     if (refreshToken) {
       await authAxios.post("/users/logout", { refreshToken });
+    } else {
+      clearAuth();
     }
   } catch (error) {
     console.error("Logout error:", error);
