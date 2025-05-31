@@ -1,6 +1,6 @@
 import {
   CalendarCheck2,
-  FileText,
+  // FileText,
   Handshake,
   History,
   House,
@@ -30,11 +30,11 @@ function LeftSidebar() {
       icon: <History size={20} />,
       path: "/availability",
     },
-    {
-      label: "Records",
-      icon: <FileText size={20} />,
-      path: "/records",
-    },
+    // {
+    //   label: "Records",
+    //   icon: <FileText size={20} />,
+    //   path: "/records",
+    // },
     {
       label: "Community",
       icon: <Handshake size={20} />,

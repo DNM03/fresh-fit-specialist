@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Card,
   CardContent,
@@ -19,138 +19,222 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Calendar, Clock, Search } from "lucide-react";
-import { format } from "date-fns";
+import {
+  Calendar,
+  Clock,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  Phone,
+  Video,
+} from "lucide-react";
+import { format, parseISO, isSameDay } from "date-fns";
+import specialistService from "@/services/specialist.service";
+import { Link } from "react-router-dom";
+
+// Helper function to format date-time
+function formatDateTime(isoString: string, formatStr: string = "PPpp"): string {
+  try {
+    return format(parseISO(isoString), formatStr);
+  } catch (error) {
+    console.error("Invalid date format:", error);
+    return "Invalid date";
+  }
+}
+
+// Interface for data structure
+interface AppointmentSlot {
+  id: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  isAvailable: boolean;
+  appointment: {
+    id: string;
+    status: string;
+    meetingLink: string | null;
+    paymentStatus: string;
+    issues: string;
+    notes: string;
+    fees: number;
+    cancellationReason: string | null;
+    type: string;
+    user: {
+      _id: string;
+      fullName: string;
+      email: string;
+      gender: number;
+      username: string;
+      avatar: string;
+    };
+  };
+}
+
+interface DateAvailability {
+  date: string;
+  slots: AppointmentSlot[];
+}
 
 export default function Appointment() {
-  const [date, setDate] = useState<Date | undefined>(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(
+    new Date()
+  );
+  const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const appointments = [
-    {
-      id: "apt-001",
-      patientName: "Sarah Johnson",
-      patientId: "P-1234",
-      time: new Date(2025, 3, 14, 9, 30),
-      status: "confirmed",
-      type: "Follow-up",
-      avatar: "/placeholder.svg?height=32&width=32",
-      notes: "Review blood pressure medication",
-    },
-    {
-      id: "apt-002",
-      patientName: "Michael Chen",
-      patientId: "P-2345",
-      time: new Date(2025, 3, 14, 10, 45),
-      status: "confirmed",
-      type: "Consultation",
-      avatar: "/placeholder.svg?height=32&width=32",
-      notes: "Initial consultation for chest pain",
-    },
-    {
-      id: "apt-003",
-      patientName: "Emily Rodriguez",
-      patientId: "P-3456",
-      time: new Date(2025, 3, 14, 13, 15),
-      status: "pending",
-      type: "New Patient",
-      avatar: "/placeholder.svg?height=32&width=32",
-      notes: "New patient intake",
-    },
-    {
-      id: "apt-004",
-      patientName: "David Wilson",
-      patientId: "P-4567",
-      time: new Date(2025, 3, 14, 14, 30),
-      status: "confirmed",
-      type: "Check-up",
-      avatar: "/placeholder.svg?height=32&width=32",
-      notes: "Annual check-up",
-    },
-    {
-      id: "apt-005",
-      patientName: "Jessica Brown",
-      patientId: "P-5678",
-      time: new Date(2025, 3, 14, 16, 0),
-      status: "rescheduled",
-      type: "Follow-up",
-      avatar: "/placeholder.svg?height=32&width=32",
-      notes: "Follow-up after procedure",
-    },
-    {
-      id: "apt-006",
-      patientName: "Robert Taylor",
-      patientId: "P-6789",
-      time: new Date(2025, 3, 15, 9, 0),
-      status: "confirmed",
-      type: "Consultation",
-      avatar: "/placeholder.svg?height=32&width=32",
-      notes: "Discuss test results",
-    },
-    {
-      id: "apt-007",
-      patientName: "Amanda Martinez",
-      patientId: "P-7890",
-      time: new Date(2025, 3, 15, 11, 30),
-      status: "cancelled",
-      type: "Follow-up",
-      avatar: "/placeholder.svg?height=32&width=32",
-      notes: "Patient cancelled due to illness",
-    },
-  ];
+  const [, setDateAvailabilities] = useState<DateAvailability[]>([]);
+  const [appointments, setAppointments] = useState<AppointmentSlot[]>([]);
+  const [specialist, setSpecialist] = useState<any>();
+
+  useEffect(() => {
+    const fetchSpecialist = async () => {
+      try {
+        const response = await specialistService.getSpecialistByAccessToken();
+        setSpecialist(response.data.data.expertInfo);
+      } catch (error) {
+        console.error("Error fetching specialist profile:", error);
+      }
+    };
+
+    fetchSpecialist();
+  }, []);
+
+  useEffect(() => {
+    const fetchAvailabilities = async () => {
+      if (!specialist?.id) return;
+
+      try {
+        const response = await specialistService.getSpecialistAvailableSlots({
+          specialistId: specialist.id,
+          month: currentMonth.getMonth() + 1,
+          year: currentMonth.getFullYear(),
+        });
+
+        // Store all date availabilities
+        const availabilities = response.data.data.availabilities || [];
+        setDateAvailabilities(availabilities);
+
+        // Extract only slots with appointments (booked slots)
+        const bookedAppointments: AppointmentSlot[] = [];
+
+        availabilities.forEach((dateAvail: DateAvailability) => {
+          if (dateAvail.slots && dateAvail.slots.length > 0) {
+            const bookedSlots = dateAvail.slots.filter(
+              (slot) => slot.appointment !== null
+            );
+
+            if (bookedSlots.length > 0) {
+              bookedAppointments.push(...bookedSlots);
+            }
+          }
+        });
+
+        console.log("Booked appointments:", bookedAppointments);
+        setAppointments(bookedAppointments);
+      } catch (error) {
+        console.error("Error fetching availabilities:", error);
+      }
+    };
+
+    if (specialist) {
+      fetchAvailabilities();
+    }
+  }, [specialist, currentMonth]);
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case "confirmed":
+    switch (status?.toUpperCase()) {
+      case "CONFIRMED":
         return "bg-green-100 text-green-800";
-      case "pending":
+      case "PENDING":
         return "bg-amber-100 text-amber-800";
-      case "cancelled":
+      case "CANCELLED":
         return "bg-red-100 text-red-800";
-      case "rescheduled":
+      case "RESCHEDULED":
         return "bg-blue-100 text-blue-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
   };
 
+  const getAppointmentIcon = (type: string) => {
+    switch (type?.toUpperCase()) {
+      case "CALL":
+        return <Phone className="h-3 w-3" />;
+      case "VIDEO":
+        return <Video className="h-3 w-3" />;
+      default:
+        return <Clock className="h-3 w-3" />;
+    }
+  };
+
   const filteredAppointments = appointments.filter((appointment) => {
+    // Filter by search query (patient name or email)
     const matchesSearch =
-      appointment.patientName
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase()) ||
-      appointment.patientId.toLowerCase().includes(searchQuery.toLowerCase());
+      appointment.appointment?.user?.fullName
+        ?.toLowerCase()
+        ?.includes(searchQuery.toLowerCase()) ||
+      appointment.appointment?.user?.email
+        ?.toLowerCase()
+        ?.includes(searchQuery.toLowerCase()) ||
+      false;
 
+    // Filter by status
+    const appointmentStatus = appointment.appointment?.status || "";
     const matchesStatus =
-      statusFilter === "all" || appointment.status === statusFilter;
+      statusFilter === "all" ||
+      appointmentStatus.toLowerCase() === statusFilter.toLowerCase();
 
-    const matchesDate = date
-      ? appointment.time.getDate() === date.getDate() &&
-        appointment.time.getMonth() === date.getMonth() &&
-        appointment.time.getFullYear() === date.getFullYear()
+    // Filter by date
+    const appointmentDate = parseISO(appointment.startTime);
+    const matchesDate = selectedDate
+      ? isSameDay(appointmentDate, selectedDate)
       : true;
 
     return matchesSearch && matchesStatus && matchesDate;
   });
 
+  // Group appointments by date for timeline view
+  const groupedAppointments = filteredAppointments.reduce(
+    (acc: Record<string, AppointmentSlot[]>, appointment) => {
+      const dateKey = format(parseISO(appointment.startTime), "yyyy-MM-dd");
+      if (!acc[dateKey]) {
+        acc[dateKey] = [];
+      }
+      acc[dateKey].push(appointment);
+      return acc;
+    },
+    {}
+  );
+
+  // Sort each day's appointments by start time
+  Object.keys(groupedAppointments).forEach((dateKey) => {
+    groupedAppointments[dateKey].sort(
+      (a, b) =>
+        new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+    );
+  });
+
+  // Sort date keys chronologically
+  const sortedDateKeys = Object.keys(groupedAppointments).sort(
+    (a, b) => new Date(a).getTime() - new Date(b).getTime()
+  );
+
+  // Function to check if a date has appointments
   const hasAppointments = (date: Date) =>
     appointments.some((appointment) => {
-      return (
-        appointment.time.getDate() === date.getDate() &&
-        appointment.time.getMonth() === date.getMonth() &&
-        appointment.time.getFullYear() === date.getFullYear()
-      );
+      try {
+        const appointmentDate = parseISO(appointment.startTime);
+        return isSameDay(appointmentDate, date);
+      } catch (error) {
+        return false;
+      }
     });
 
   return (
     <div className="container mx-auto py-6 px-4">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Appointments</h1>
-        {/* <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          New Schedule
-        </Button> */}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-6">
@@ -163,17 +247,50 @@ export default function Appointment() {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              <div className="flex justify-between items-center mb-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => {
+                    const prevMonth = new Date(currentMonth);
+                    prevMonth.setMonth(prevMonth.getMonth() - 1);
+                    setCurrentMonth(prevMonth);
+                  }}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <h3 className="font-medium">
+                  {format(currentMonth, "MMMM yyyy")}
+                </h3>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => {
+                    const nextMonth = new Date(currentMonth);
+                    nextMonth.setMonth(nextMonth.getMonth() + 1);
+                    setCurrentMonth(nextMonth);
+                  }}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+
               <CalendarComponent
                 mode="single"
-                selected={date}
-                onSelect={setDate}
+                selected={selectedDate}
+                onSelect={setSelectedDate}
                 className="rounded-md border"
+                month={currentMonth}
+                onMonthChange={setCurrentMonth}
                 modifiers={{
                   hasAppointments: (date) => hasAppointments(date),
                 }}
                 modifiersClassNames={{
                   hasAppointments: "bg-blue-100 text-sky-700",
                   selected: "!bg-primary !text-white",
+                }}
+                components={{
+                  Caption: () => null, // hides the default header since we have our custom one
                 }}
               />
 
@@ -183,7 +300,11 @@ export default function Appointment() {
                   <Button
                     variant="outline"
                     className="w-full justify-start"
-                    onClick={() => setDate(new Date())}
+                    onClick={() => {
+                      const today = new Date();
+                      setSelectedDate(today);
+                      setCurrentMonth(today);
+                    }}
                   >
                     <Calendar className="h-4 w-4 mr-2" />
                     Today
@@ -194,7 +315,8 @@ export default function Appointment() {
                     onClick={() => {
                       const tomorrow = new Date();
                       tomorrow.setDate(tomorrow.getDate() + 1);
-                      setDate(tomorrow);
+                      setSelectedDate(tomorrow);
+                      setCurrentMonth(tomorrow);
                     }}
                   >
                     <Calendar className="h-4 w-4 mr-2" />
@@ -206,7 +328,8 @@ export default function Appointment() {
                     onClick={() => {
                       const nextWeek = new Date();
                       nextWeek.setDate(nextWeek.getDate() + 7);
-                      setDate(nextWeek);
+                      setSelectedDate(nextWeek);
+                      setCurrentMonth(nextWeek);
                     }}
                   >
                     <Calendar className="h-4 w-4 mr-2" />
@@ -224,8 +347,8 @@ export default function Appointment() {
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
                   <CardTitle>
-                    {date
-                      ? format(date, "EEEE, MMMM d, yyyy")
+                    {selectedDate
+                      ? format(selectedDate, "EEEE, MMMM d, yyyy")
                       : "All Appointments"}
                   </CardTitle>
                   <CardDescription>
@@ -268,53 +391,66 @@ export default function Appointment() {
 
                 <TabsContent value="list" className="space-y-4">
                   {filteredAppointments.length > 0 ? (
-                    filteredAppointments.map((appointment) => (
+                    filteredAppointments.map((slot) => (
                       <div
-                        key={appointment.id}
+                        key={slot.id}
                         className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
                       >
                         <div className="flex items-center">
                           <Avatar className="h-10 w-10 mr-3">
                             <AvatarImage
-                              src={appointment.avatar || "/placeholder.svg"}
-                              alt={appointment.patientName}
+                              src={
+                                slot.appointment?.user?.avatar ||
+                                "/placeholder.svg"
+                              }
+                              alt={
+                                slot.appointment?.user?.fullName || "Patient"
+                              }
                             />
                             <AvatarFallback>
-                              {appointment.patientName
-                                .split(" ")
-                                .map((n) => n[0])
-                                .join("")}
+                              {slot.appointment?.user?.fullName
+                                ?.split(" ")
+                                ?.map((n) => n[0])
+                                ?.join("") || "P"}
                             </AvatarFallback>
                           </Avatar>
                           <div>
                             <p className="font-medium">
-                              {appointment.patientName}
+                              {slot.appointment?.user?.fullName ||
+                                "Unknown Patient"}
                             </p>
                             <div className="flex items-center text-sm text-gray-500">
                               <Clock className="h-3 w-3 mr-1" />
-                              {format(appointment.time, "h:mm a")}
+                              {formatDateTime(slot.startTime, "h:mm a")} -{" "}
+                              {formatDateTime(slot.endTime, "h:mm a")}
                               <span className="mx-2">•</span>
-                              <span>{appointment.type}</span>
+                              <div className="flex items-center gap-1">
+                                {getAppointmentIcon(slot.appointment?.type)}
+                                <span>
+                                  {slot.appointment?.type || "Consultation"}
+                                </span>
+                              </div>
                             </div>
                           </div>
                         </div>
                         <div className="flex items-center">
                           <Badge
-                            className={getStatusColor(appointment.status)}
+                            className={getStatusColor(slot.appointment?.status)}
                             variant="outline"
                           >
-                            {appointment.status.charAt(0).toUpperCase() +
-                              appointment.status.slice(1)}
+                            {(slot.appointment?.status || "PENDING")
+                              .charAt(0)
+                              .toUpperCase() +
+                              (slot.appointment?.status || "PENDING")
+                                .slice(1)
+                                .toLowerCase()}
                           </Badge>
                           <div className="flex ml-4">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="mr-2"
-                            >
-                              Reschedule
-                            </Button>
-                            <Button size="sm">Start Session</Button>
+                            <Link to={`/appointments/${slot.appointment.id}`}>
+                              <Button variant="outline" size="sm">
+                                View Details
+                              </Button>
+                            </Link>
                           </div>
                         </div>
                       </div>
@@ -328,7 +464,9 @@ export default function Appointment() {
                         variant="outline"
                         className="mt-4"
                         onClick={() => {
-                          setDate(new Date());
+                          const today = new Date();
+                          setSelectedDate(today);
+                          setCurrentMonth(today);
                           setStatusFilter("all");
                           setSearchQuery("");
                         }}
@@ -341,63 +479,134 @@ export default function Appointment() {
 
                 <TabsContent value="timeline">
                   <div className="space-y-6">
-                    {filteredAppointments.length > 0 ? (
-                      <>
-                        <div className="relative">
-                          <div className="absolute left-4 top-1 bottom-0 w-0.5 bg-gray-200"></div>
-                          <div className="space-y-8">
-                            {filteredAppointments.map((appointment) => (
-                              <div
-                                key={appointment.id}
-                                className="relative pl-10"
-                              >
-                                <div className="absolute left-0 top-1 w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                                  <Clock className="h-4 w-4 text-blue-600" />
-                                </div>
-                                <div className="p-4 border rounded-lg hover:bg-gray-50">
-                                  <div className="flex justify-between items-start">
-                                    <div>
-                                      <p className="font-medium text-blue-600">
-                                        {format(appointment.time, "h:mm a")}
-                                      </p>
-                                      <p className="font-medium mt-1">
-                                        {appointment.patientName}
-                                      </p>
-                                      <p className="text-sm text-gray-500">
-                                        Patient ID: {appointment.patientId}
-                                      </p>
-                                      <p className="text-sm text-gray-500 mt-2">
-                                        {appointment.notes}
-                                      </p>
+                    {sortedDateKeys.length > 0 ? (
+                      sortedDateKeys.map((dateKey) => (
+                        <div key={dateKey} className="mb-8">
+                          <div className="flex items-center mb-4">
+                            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center mr-4">
+                              <Calendar className="h-5 w-5 text-blue-600" />
+                            </div>
+                            <h3 className="text-lg font-medium">
+                              {format(new Date(dateKey), "EEEE, MMMM d, yyyy")}
+                            </h3>
+                          </div>
+                          <div className="relative">
+                            <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200"></div>
+                            <div className="space-y-8 pl-8">
+                              {groupedAppointments[dateKey].map((slot) => (
+                                <div key={slot.id} className="relative">
+                                  <div className="absolute -left-4 top-1 w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                                    {getAppointmentIcon(slot.appointment?.type)}
+                                  </div>
+                                  <div className="p-4 border rounded-lg hover:bg-gray-50">
+                                    <div className="flex justify-between items-start">
+                                      <div>
+                                        <p className="font-medium text-blue-600">
+                                          {formatDateTime(
+                                            slot.startTime,
+                                            "h:mm a"
+                                          )}{" "}
+                                          -{" "}
+                                          {formatDateTime(
+                                            slot.endTime,
+                                            "h:mm a"
+                                          )}
+                                        </p>
+                                        <div className="flex items-center gap-2 mt-1">
+                                          <Avatar className="h-6 w-6">
+                                            <AvatarImage
+                                              src={
+                                                slot.appointment?.user
+                                                  ?.avatar || "/placeholder.svg"
+                                              }
+                                            />
+                                            <AvatarFallback>
+                                              {slot.appointment?.user?.fullName?.charAt(
+                                                0
+                                              ) || "P"}
+                                            </AvatarFallback>
+                                          </Avatar>
+                                          <p className="font-medium">
+                                            {slot.appointment?.user?.fullName ||
+                                              "Unknown Patient"}
+                                          </p>
+                                        </div>
+                                        <p className="text-sm text-gray-500 mt-1">
+                                          Email:{" "}
+                                          {slot.appointment?.user?.email ||
+                                            "N/A"}
+                                        </p>
+                                        {slot.appointment?.issues && (
+                                          <div className="mt-2">
+                                            <p className="text-sm text-gray-700 font-medium">
+                                              Issues:
+                                            </p>
+                                            <p className="text-sm text-gray-600">
+                                              {slot.appointment.issues}
+                                            </p>
+                                          </div>
+                                        )}
+                                        {slot.appointment?.notes && (
+                                          <div className="mt-2">
+                                            <p className="text-sm text-gray-700 font-medium">
+                                              Notes:
+                                            </p>
+                                            <p className="text-sm text-gray-600">
+                                              {slot.appointment.notes}
+                                            </p>
+                                          </div>
+                                        )}
+                                      </div>
+                                      <div className="flex flex-col items-end">
+                                        <Badge
+                                          className={getStatusColor(
+                                            slot.appointment?.status
+                                          )}
+                                          variant="outline"
+                                        >
+                                          {(
+                                            slot.appointment?.status ||
+                                            "PENDING"
+                                          )
+                                            .charAt(0)
+                                            .toUpperCase() +
+                                            (
+                                              slot.appointment?.status ||
+                                              "PENDING"
+                                            )
+                                              .slice(1)
+                                              .toLowerCase()}
+                                        </Badge>
+                                        <Badge
+                                          className="mt-2 bg-green-50 text-green-700"
+                                          variant="outline"
+                                        >
+                                          {slot.appointment?.paymentStatus ||
+                                            "UNPAID"}
+                                        </Badge>
+                                        {slot.appointment?.fees && (
+                                          <p className="text-sm font-medium mt-2">
+                                            ${slot.appointment.fees}
+                                          </p>
+                                        )}
+                                      </div>
                                     </div>
-                                    <Badge
-                                      className={getStatusColor(
-                                        appointment.status
-                                      )}
-                                      variant="outline"
-                                    >
-                                      {appointment.status
-                                        .charAt(0)
-                                        .toUpperCase() +
-                                        appointment.status.slice(1)}
-                                    </Badge>
-                                  </div>
-                                  <div className="flex mt-4">
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="mr-2"
-                                    >
-                                      View Details
-                                    </Button>
-                                    <Button size="sm">Start Session</Button>
+                                    <div className="flex mt-4">
+                                      <Link
+                                        to={`/appointments/${slot.appointment.id}`}
+                                      >
+                                        <Button variant="outline" size="sm">
+                                          View Details
+                                        </Button>
+                                      </Link>
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            ))}
+                              ))}
+                            </div>
                           </div>
                         </div>
-                      </>
+                      ))
                     ) : (
                       <div className="text-center py-10 border rounded-lg">
                         <p className="text-gray-500">
@@ -407,7 +616,9 @@ export default function Appointment() {
                           variant="outline"
                           className="mt-4"
                           onClick={() => {
-                            setDate(new Date());
+                            const today = new Date();
+                            setSelectedDate(today);
+                            setCurrentMonth(today);
                             setStatusFilter("all");
                             setSearchQuery("");
                           }}

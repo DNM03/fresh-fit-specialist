@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Card,
   CardContent,
@@ -23,10 +23,40 @@ import {
   ArrowUpRight,
 } from "lucide-react";
 import { format } from "date-fns";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { userService } from "@/services";
+import specialistService from "@/services/specialist.service";
 
 export default function Dashboard() {
   const [, setActiveTab] = useState("overview");
+  const navigate = useNavigate();
+  const [myProfile, setMyProfile] = useState<any>();
+  const [expertDetail, setExpertDetail] = useState<any>();
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await userService.getCurrentUser();
+        if (response) {
+          setMyProfile(response.data.result);
+        }
+      } catch (error) {
+        console.error("Failed to fetch profile:", error);
+      }
+    };
+    const fetchExpertDetail = async () => {
+      try {
+        const response = await specialistService.getSpecialistByAccessToken();
+        if (response) {
+          setExpertDetail(response.data.data.expertInfo);
+        }
+      } catch (error) {
+        console.error("Failed to fetch expert detail:", error);
+      }
+    };
+    fetchProfile();
+    fetchExpertDetail();
+  }, []);
 
   const stats = [
     {
@@ -40,7 +70,7 @@ export default function Dashboard() {
       title: "Pending Appointments",
       value: 12,
       icon: <Clock className="h-5 w-5 text-amber-500" />,
-      change: "-3 from last week",
+      change: "-3 from last month",
       trend: "down",
     },
     {
@@ -176,14 +206,18 @@ export default function Dashboard() {
         <div className="flex items-center">
           <Avatar className="h-16 w-16 mr-4 border-2 border-blue-100">
             <AvatarImage
-              src="/placeholder.svg?height=64&width=64"
+              src={myProfile?.avatar || "/placeholder.svg?height=64&width=64"}
               alt="Dr. Alex Morgan"
             />
             <AvatarFallback>AM</AvatarFallback>
           </Avatar>
           <div>
-            <h1 className="text-2xl font-bold">Welcome back, Dr. John Doe</h1>
-            <p className="text-gray-500">Heart | Medical Center Hospital</p>
+            <h1 className="text-2xl font-bold">
+              Welcome back, {myProfile?.fullName || "Dr. John Doe"}
+            </h1>
+            <p className="text-gray-500">
+              {expertDetail?.specialization || "Specialization"}
+            </p>
           </div>
         </div>
         <div className="flex items-center space-x-2">
@@ -267,7 +301,10 @@ export default function Dashboard() {
                     <CalendarIcon className="h-6 w-6 text-blue-700" />
                   </div>
                 </div>
-                <Button className="mt-4 bg-blue-600 hover:bg-blue-700 text-white w-full">
+                <Button
+                  className="mt-4 bg-blue-600 hover:bg-blue-700 text-white w-full"
+                  onClick={() => navigate("/appointments")}
+                >
                   View Schedule
                 </Button>
               </CardContent>
@@ -278,17 +315,20 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-lg font-medium text-green-800">
-                      Patient Records
+                      Meeting Records
                     </h3>
                     <p className="text-sm text-green-600 mt-1">
-                      Access and update medical records
+                      Access and view meeting records
                     </p>
                   </div>
                   <div className="h-12 w-12 rounded-full bg-green-200 flex items-center justify-center">
                     <FileText className="h-6 w-6 text-green-700" />
                   </div>
                 </div>
-                <Button className="mt-4 bg-green-600 hover:bg-green-700 text-white w-full">
+                <Button
+                  className="mt-4 bg-green-600 hover:bg-green-700 text-white w-full"
+                  onClick={() => navigate("/records")}
+                >
                   View Records
                 </Button>
               </CardContent>
@@ -299,18 +339,21 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-lg font-medium text-purple-800">
-                      Analytics
+                      Personal Information
                     </h3>
                     <p className="text-sm text-purple-600 mt-1">
-                      View insights and performance metrics
+                      View and update your personal information
                     </p>
                   </div>
                   <div className="h-12 w-12 rounded-full bg-purple-200 flex items-center justify-center">
                     <BarChart3 className="h-6 w-6 text-purple-700" />
                   </div>
                 </div>
-                <Button className="mt-4 bg-purple-600 hover:bg-purple-700 text-white w-full">
-                  View Analytics
+                <Button
+                  className="mt-4 bg-purple-600 hover:bg-purple-700 text-white w-full"
+                  onClick={() => navigate("/settings")}
+                >
+                  View Information
                 </Button>
               </CardContent>
             </Card>

@@ -9,6 +9,7 @@ import CommunityPage from "@/pages/community";
 import SettingsPage from "@/pages/settings";
 import VideoCallPage from "@/pages/appointment/meeting";
 import AddAvailabilityPage from "@/pages/availability/add";
+import AppointmentDetail from "@/pages/appointment/detail";
 
 // const withSuspense = (
 //   Component: React.LazyExoticComponent<React.ComponentType<any>>
@@ -44,6 +45,10 @@ const router = createBrowserRouter([
           {
             path: "/appointments/meeting",
             element: <VideoCallPage />,
+          },
+          {
+            path: "/appointments/:id",
+            element: <AppointmentDetail />,
           },
         ],
       },

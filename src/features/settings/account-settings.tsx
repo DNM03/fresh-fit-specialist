@@ -12,25 +12,15 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Loader2, KeyRound, Bell, Shield, LogOut } from "lucide-react";
+import { Loader2, KeyRound } from "lucide-react";
 import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 const passwordFormSchema = z
   .object({
@@ -53,16 +43,6 @@ type PasswordFormValues = z.infer<typeof passwordFormSchema>;
 
 export function AccountSettings() {
   const [isLoading, setIsLoading] = useState(false);
-
-  // Notification settings
-  const [emailNotifications, setEmailNotifications] = useState(true);
-  const [smsNotifications, setSmsNotifications] = useState(true);
-  const [appointmentReminders, setAppointmentReminders] = useState(true);
-  const [marketingEmails, setMarketingEmails] = useState(false);
-
-  // Security settings
-  const [twoFactorAuth, setTwoFactorAuth] = useState(false);
-  const [sessionTimeout, setSessionTimeout] = useState("30");
 
   const form = useForm<PasswordFormValues>({
     resolver: zodResolver(passwordFormSchema),
@@ -93,32 +73,6 @@ export function AccountSettings() {
       });
     }, 1000);
   }
-
-  const handleSaveNotifications = () => {
-    setIsLoading(true);
-
-    setTimeout(() => {
-      setIsLoading(false);
-
-      toast("", {
-        description:
-          "Your notification preferences have been updated successfully.",
-      });
-    }, 1000);
-  };
-
-  const handleSaveSecurity = () => {
-    setIsLoading(true);
-
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-
-      toast("", {
-        description: "Your security settings have been updated successfully.",
-      });
-    }, 1000);
-  };
 
   return (
     <div className="space-y-6">
@@ -194,7 +148,7 @@ export function AccountSettings() {
         </CardContent>
       </Card>
 
-      <Card>
+      {/* <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
             <Bell className="h-5 w-5 text-blue-500" />
@@ -275,9 +229,9 @@ export function AccountSettings() {
             )}
           </Button>
         </CardFooter>
-      </Card>
+      </Card> */}
 
-      <Card>
+      {/* <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
             <Shield className="h-5 w-5 text-blue-500" />
@@ -336,9 +290,9 @@ export function AccountSettings() {
             )}
           </Button>
         </CardFooter>
-      </Card>
+      </Card> */}
 
-      <Card>
+      {/* <Card>
         <CardHeader>
           <CardTitle>Account Actions</CardTitle>
           <CardDescription>
@@ -373,7 +327,7 @@ export function AccountSettings() {
             </Button>
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
     </div>
   );
 }
