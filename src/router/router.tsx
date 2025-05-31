@@ -11,6 +11,9 @@ import VideoCallPage from "@/pages/appointment/meeting";
 import AddAvailabilityPage from "@/pages/availability/add";
 import AppointmentDetail from "@/pages/appointment/detail";
 import History from "@/pages/history";
+// import OverlayLoading from "@/components/overlay-loading/overlay-loading";
+// import { Suspense } from "react";
+import ProtectedRoute from "./protected-route";
 
 // const withSuspense = (
 //   Component: React.LazyExoticComponent<React.ComponentType<any>>
@@ -29,7 +32,11 @@ import History from "@/pages/history";
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <MainLayout />,
+    element: (
+      <ProtectedRoute>
+        <MainLayout />
+      </ProtectedRoute>
+    ),
     children: [
       {
         index: true,

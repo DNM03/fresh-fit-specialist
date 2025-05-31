@@ -10,6 +10,8 @@ import {
 import app_logo from "@/assets/images/freshfit_logo.png";
 
 import { useLocation, useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { authService } from "@/services";
 // import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 function LeftSidebar() {
@@ -101,6 +103,18 @@ function LeftSidebar() {
           <p className="text-sm">Heart</p>
         </div>
       </div> */}
+      <div className="mt-auto w-full px-4">
+        <Button
+          type="button"
+          className="w-full border-red-500 bg-red-500 hover:bg-red-600 hover:text-white"
+          onClick={() => {
+            authService.logout();
+            navigate("/login");
+          }}
+        >
+          Logout
+        </Button>
+      </div>
     </div>
   );
 }
