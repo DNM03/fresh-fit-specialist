@@ -375,8 +375,8 @@ export default function Availability() {
                             </div>
                             <div>
                               <p className="font-medium">
-                                {formatDateTime(avail.startTime)} -{" "}
-                                {formatDateTime(avail.endTime)}
+                                {formatDateTime(avail.startTime, "h:mm a")} -{" "}
+                                {formatDateTime(avail.endTime, "h:mm a")}
                               </p>
                               <p className="text-sm text-gray-500">
                                 {calculateDuration(
@@ -559,8 +559,8 @@ export default function Availability() {
                                     className="text-xs p-2 bg-blue-100 rounded"
                                   >
                                     <p className="font-medium">
-                                      {formatDateTime(slot.startTime, "HH:mm")}{" "}
-                                      - {formatDateTime(slot.endTime, "HH:mm")}
+                                      {formatDateTime(slot.startTime, "h:mm a")}{" "}
+                                      - {formatDateTime(slot.endTime, "h:mm a")}
                                     </p>
                                     <p className="text-xs text-gray-600">
                                       {calculateDuration(
@@ -622,8 +622,8 @@ export default function Availability() {
                           <div className="flex items-center justify-between p-3">
                             <div>
                               <p className="text-sm font-medium">
-                                {formatDateTime(slot.startTime)} -{" "}
-                                {formatDateTime(slot.endTime)}
+                                {formatDateTime(slot.startTime, "h:mm a")} -{" "}
+                                {formatDateTime(slot.endTime, "h:mm a")}
                               </p>
                               <p className="text-xs text-gray-500">
                                 {calculateDuration(

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -13,6 +13,13 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import { Loader2, Plus, Trash2, Edit, GraduationCap } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -26,14 +33,33 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import specialistService from "@/services/specialist.service";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
+// Define degree options
+const degreeOptions = [
+  { label: "Associate", value: "ASSOCIATE" },
+  { label: "Bachelor", value: "BACHELOR" },
+  { label: "Master", value: "MASTER" },
+  { label: "Doctorate", value: "DOCTORATE" },
+];
 
 // Define the education schema
 const educationSchema = z.object({
   institution: z.string().min(2, {
     message: "Institution name must be at least 2 characters.",
   }),
-  degree: z.string().min(2, {
-    message: "Degree must be at least 2 characters.",
+  degree: z.enum(["ASSOCIATE", "BACHELOR", "MASTER", "DOCTORATE"], {
+    required_error: "Please select a degree.",
   }),
   major: z.string().min(2, {
     message: "Field of study must be at least 2 characters.",
@@ -54,57 +80,43 @@ const educationSchema = z.object({
     .max(new Date().getFullYear() + 10, {
       message: "End year cannot be too far in the future.",
     })
-    .optional(),
+    .optional()
+    .nullable(),
   currentlyStudying: z.boolean().optional(),
 });
 
 type EducationFormValues = z.infer<typeof educationSchema>;
 
-// Mock data for education
-const initialEducation = [
-  {
-    id: "edu-1",
-    institution: "Harvard Medical School",
-    degree: "Doctor of Medicine (MD)",
-    major: "Medicine",
-    startYear: 2008,
-    endYear: 2012,
-    currentlyStudying: false,
-  },
-  {
-    id: "edu-2",
-    institution: "Johns Hopkins University",
-    degree: "Fellowship",
-    major: "Cardiology",
-    startYear: 2012,
-    endYear: 2015,
-    currentlyStudying: false,
-  },
-  {
-    id: "edu-3",
-    institution: "Stanford University",
-    degree: "Bachelor of Science",
-    major: "Biology",
-    startYear: 2004,
-    endYear: 2008,
-    currentlyStudying: false,
-  },
-];
+interface Education {
+  id: string;
+  institution: string;
+  degree: "ASSOCIATE" | "BACHELOR" | "MASTER" | "DOCTORATE";
+  major: string;
+  startYear: number;
+  endYear: number | null;
+}
 
 export function EducationSettings() {
-  const [education, setEducation] = useState(initialEducation);
+  const [education, setEducation] = useState<Education[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingEduId, setEditingEduId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [specialistId, setSpecialistId] = useState<string | null>(null);
+
+  // Add these state variables
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deletingEduId, setDeletingEduId] = useState<string | null>(null);
 
   const form = useForm<EducationFormValues>({
     resolver: zodResolver(educationSchema),
     defaultValues: {
       institution: "",
-      degree: "",
+      degree: undefined,
       major: "",
-      startYear: undefined,
-      endYear: undefined,
+      startYear: new Date().getFullYear(),
+      endYear: null,
       currentlyStudying: false,
     },
     mode: "onChange",
@@ -112,109 +124,154 @@ export function EducationSettings() {
 
   const watchCurrentlyStudying = form.watch("currentlyStudying");
 
+  // Fetch education data on component mount
+  useEffect(() => {
+    const fetchEducation = async () => {
+      try {
+        setIsFetching(true);
+        const response = await specialistService.getSpecialistByAccessToken();
+
+        if (response.data) {
+          setSpecialistId(response.data.data.expertInfo.id);
+        }
+
+        if (response?.data?.data?.expertInfo.educations) {
+          setEducation(response.data.data.expertInfo.educations);
+        }
+      } catch (error) {
+        console.error("Error fetching education data:", error);
+        toast.error("Failed to load education data");
+      } finally {
+        setIsFetching(false);
+      }
+    };
+
+    fetchEducation();
+  }, []);
+
   const openNewEducationDialog = () => {
     form.reset({
       institution: "",
-      degree: "",
+      degree: undefined,
       major: "",
-      startYear: undefined,
-      endYear: undefined,
+      startYear: new Date().getFullYear(),
+      endYear: null,
       currentlyStudying: false,
     });
     setEditingEduId(null);
     setIsDialogOpen(true);
   };
 
-  const openEditEducationDialog = (edu: any) => {
+  const openEditEducationDialog = (edu: Education) => {
     form.reset({
       institution: edu.institution,
       degree: edu.degree,
       major: edu.major,
       startYear: edu.startYear,
-      endYear: edu.currentlyStudying
-        ? new Date().getFullYear()
-        : edu.endYear || new Date().getFullYear(),
-      currentlyStudying: edu.currentlyStudying,
+      endYear: edu.endYear,
+      currentlyStudying: edu.endYear === null,
     });
     setEditingEduId(edu.id);
     setIsDialogOpen(true);
   };
 
-  const handleDeleteEducation = (id: string) => {
-    setEducation(education.filter((edu) => edu.id !== id));
-
-    toast("", {
-      description: "The education entry has been removed from your profile.",
-    });
+  const handleDeleteConfirmation = (id: string) => {
+    setDeletingEduId(id);
+    setIsDeleteDialogOpen(true);
   };
 
-  function onSubmit(data: EducationFormValues) {
-    setIsLoading(true);
+  const handleDeleteEducation = async () => {
+    try {
+      setIsDeleting(true);
 
-    // Simulate API call
-    setTimeout(() => {
+      await specialistService.deleteEducation(specialistId as string, {
+        educationIds: [deletingEduId as string],
+      });
+
+      setEducation(education.filter((edu) => edu.id !== deletingEduId));
+      toast.success("The education entry has been removed from your profile");
+
+      // Close the dialog
+      setIsDeleteDialogOpen(false);
+      setDeletingEduId(null);
+    } catch (error) {
+      console.error("Error deleting education:", error);
+      toast.error("Failed to delete education entry");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const getDegreeLabel = (value: string) => {
+    const option = degreeOptions.find((option) => option.value === value);
+    return option ? option.label : value;
+  };
+
+  async function onSubmit(data: EducationFormValues) {
+    try {
+      setIsLoading(true);
+
+      const educationData = {
+        institution: data.institution,
+        degree: data.degree,
+        major: data.major,
+        startYear: data.startYear,
+        endYear: data.currentlyStudying ? null : data.endYear,
+      };
+
+      let response: any;
+
       if (editingEduId) {
-        setEducation(
-          education.map((edu) =>
-            edu.id === editingEduId
-              ? {
-                  ...edu,
-                  institution: data.institution,
-                  degree: data.degree,
-                  major: data.major,
-                  startYear: data.startYear,
-                  endYear: data.currentlyStudying
-                    ? new Date().getFullYear()
-                    : data.endYear || new Date().getFullYear(),
-                  currentlyStudying: data.currentlyStudying || false,
-                }
-              : edu
-          )
+        response = await specialistService.updateEducation(
+          specialistId as string,
+          editingEduId,
+          educationData
         );
 
-        toast("", {
-          description: "The education entry has been updated successfully.",
-        });
+        if (response.status === 200) {
+          // Update local state
+          setEducation(
+            education.map((edu) =>
+              edu.id === editingEduId
+                ? { ...edu, ...response.data.data.education }
+                : edu
+            )
+          );
+          toast.success("The education entry has been updated successfully");
+        }
       } else {
         // Add new education
-        const newEdu = {
-          id: `edu-${Date.now()}`,
-          institution: data.institution,
-          degree: data.degree,
-          major: data.major,
-          startYear: data.startYear,
-          endYear: data.currentlyStudying ? null : data.endYear,
-          currentlyStudying: data.currentlyStudying || false,
-        };
+        response = await specialistService.addEducation(
+          specialistId as string,
+          educationData
+        );
 
-        setEducation([
-          ...education,
-          { ...newEdu, endYear: newEdu.endYear ?? new Date().getFullYear() },
-        ]);
-
-        toast("", {
-          description: "The education entry has been added to your profile.",
-        });
+        if (response.status === 201 || response.status === 200) {
+          // Add new education to local state
+          setEducation([...education, response.data.data.education]);
+          toast.success("The education entry has been added to your profile");
+        }
       }
 
-      setIsLoading(false);
       setIsDialogOpen(false);
-    }, 1000);
+    } catch (error) {
+      console.error("Error saving education:", error);
+      toast.error("Failed to save education entry");
+    } finally {
+      setIsLoading(false);
+    }
   }
 
-  const handleSaveChanges = () => {
-    setIsLoading(true);
-
-    // Simulate API call
-    setTimeout(() => {
-      console.log("Saved education:", education);
-      setIsLoading(false);
-
-      toast("", {
-        description: "Your education history has been updated successfully.",
-      });
-    }, 1000);
-  };
+  if (isFetching) {
+    return (
+      <div className="flex justify-center items-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2 text-lg text-muted-foreground">
+          Loading education history...
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -228,7 +285,7 @@ export function EducationSettings() {
 
         <div className="grid grid-cols-1 gap-4">
           {education.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="text-center py-8 text-muted-foreground border rounded-md bg-muted/10">
               You haven't added any education yet. Add your educational
               background to enhance your profile.
             </div>
@@ -241,8 +298,10 @@ export function EducationSettings() {
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
                           <GraduationCap className="h-5 w-5 text-blue-500" />
-                          <h4 className="font-medium">{edu.degree}</h4>
-                          {edu.currentlyStudying && (
+                          <h4 className="font-medium">
+                            {getDegreeLabel(edu.degree)}
+                          </h4>
+                          {edu.endYear === null && (
                             <Badge
                               variant="outline"
                               className="bg-blue-50 text-blue-700 border-blue-200"
@@ -258,7 +317,7 @@ export function EducationSettings() {
                         <div className="text-sm">
                           <span>
                             {edu.startYear} -{" "}
-                            {edu.currentlyStudying ? "Present" : edu.endYear}
+                            {edu.endYear === null ? "Present" : edu.endYear}
                           </span>
                         </div>
                       </div>
@@ -274,7 +333,8 @@ export function EducationSettings() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleDeleteEducation(edu.id)}
+                          onClick={() => handleDeleteConfirmation(edu.id)}
+                          disabled={isDeleting}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -288,21 +348,10 @@ export function EducationSettings() {
         </div>
       </div>
 
-      <div className="flex justify-between items-center">
+      <div className="flex justify-center md:justify-start">
         <Button onClick={openNewEducationDialog}>
           <Plus className="h-4 w-4 mr-2" />
           Add Education
-        </Button>
-
-        <Button onClick={handleSaveChanges} disabled={isLoading}>
-          {isLoading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Saving...
-            </>
-          ) : (
-            "Save Changes"
-          )}
         </Button>
       </div>
 
@@ -338,24 +387,35 @@ export function EducationSettings() {
                 )}
               />
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="degree"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Degree</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="e.g., Doctor of Medicine (MD)"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              <FormField
+                control={form.control}
+                name="degree"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Degree</FormLabel>
+                    <FormControl>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a degree" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {degreeOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="major"
@@ -395,9 +455,19 @@ export function EducationSettings() {
                       <FormControl>
                         <Input
                           type="number"
-                          {...field}
+                          value={
+                            watchCurrentlyStudying
+                              ? ""
+                              : field.value?.toString() || ""
+                          }
+                          onChange={(e) => {
+                            const value =
+                              e.target.value === ""
+                                ? null
+                                : Number(e.target.value);
+                            field.onChange(value);
+                          }}
                           disabled={watchCurrentlyStudying}
-                          value={watchCurrentlyStudying ? "" : field.value}
                         />
                       </FormControl>
                       <FormMessage />
@@ -413,7 +483,7 @@ export function EducationSettings() {
                   <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
                     <FormControl>
                       <Checkbox
-                        checked={field.value}
+                        checked={field.value || false}
                         onCheckedChange={field.onChange}
                       />
                     </FormControl>
@@ -452,6 +522,41 @@ export function EducationSettings() {
           </Form>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this education entry from your
+              profile. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleDeleteEducation();
+              }}
+              disabled={isDeleting}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

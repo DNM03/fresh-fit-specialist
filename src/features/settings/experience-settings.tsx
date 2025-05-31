@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -28,8 +28,18 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { format } from "date-fns";
+import specialistService from "@/services/specialist.service";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
-// Define the experience schema
 const experienceSchema = z.object({
   company: z.string().min(2, {
     message: "Company name must be at least 2 characters.",
@@ -46,51 +56,32 @@ const experienceSchema = z.object({
     .refine((val) => !isNaN(Date.parse(val)) || val === "", {
       message: "Please enter a valid date.",
     })
-    .optional(),
+    .optional()
+    .nullable(),
   currentlyWorking: z.boolean().optional(),
 });
 
 type ExperienceFormValues = z.infer<typeof experienceSchema>;
 
-// Mock data for experience
-const initialExperience = [
-  {
-    id: "exp-1",
-    company: "Memorial Hospital",
-    position: "Senior Cardiologist",
-    description:
-      "Leading the cardiology department, specializing in interventional procedures and patient care. Supervising a team of 5 junior cardiologists.",
-    startDate: new Date("2018-03-15"),
-    endDate: null,
-    currentlyWorking: true,
-  },
-  {
-    id: "exp-2",
-    company: "City Medical Center",
-    position: "Cardiologist",
-    description:
-      "Provided comprehensive cardiac care, performed diagnostic procedures, and participated in research studies.",
-    startDate: new Date("2015-06-01"),
-    endDate: new Date("2018-02-28"),
-    currentlyWorking: false,
-  },
-  {
-    id: "exp-3",
-    company: "University Hospital",
-    position: "Cardiology Fellow",
-    description:
-      "Completed specialized training in cardiology, participated in research, and provided patient care under supervision.",
-    startDate: new Date("2012-07-01"),
-    endDate: new Date("2015-05-31"),
-    currentlyWorking: false,
-  },
-];
+interface Experience {
+  id: string;
+  company: string;
+  position: string;
+  description: string | null;
+  startDate: string;
+  endDate: string | null;
+}
 
 export function ExperienceSettings() {
-  const [experience, setExperience] = useState(initialExperience);
+  const [experience, setExperience] = useState<Experience[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingExpId, setEditingExpId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [specialistId, setSpecialistId] = useState<string | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deletingExpId, setDeletingExpId] = useState<string | null>(null);
 
   const form = useForm<ExperienceFormValues>({
     resolver: zodResolver(experienceSchema),
@@ -107,6 +98,31 @@ export function ExperienceSettings() {
 
   const watchCurrentlyWorking = form.watch("currentlyWorking");
 
+  // Fetch experiences on component mount
+  useEffect(() => {
+    const fetchExperience = async () => {
+      try {
+        setIsFetching(true);
+        const response = await specialistService.getSpecialistByAccessToken();
+
+        if (response.data) {
+          setSpecialistId(response.data.data.expertInfo.id);
+        }
+
+        if (response?.data?.data?.expertInfo.experiences) {
+          setExperience(response.data.data.expertInfo.experiences);
+        }
+      } catch (error) {
+        console.error("Error fetching experience data:", error);
+        toast.error("Failed to load experience data");
+      } finally {
+        setIsFetching(false);
+      }
+    };
+
+    fetchExperience();
+  }, []);
+
   const openNewExperienceDialog = () => {
     form.reset({
       company: "",
@@ -120,100 +136,115 @@ export function ExperienceSettings() {
     setIsDialogOpen(true);
   };
 
-  const openEditExperienceDialog = (exp: any) => {
+  const openEditExperienceDialog = (exp: Experience) => {
     form.reset({
-      company: exp.company,
-      position: exp.position,
+      company: exp.company || "",
+      position: exp.position || "",
       description: exp.description || "",
-      startDate: exp.startDate.toISOString().split("T")[0],
-      endDate: exp.currentlyWorking
-        ? ""
-        : exp.endDate?.toISOString().split("T")[0] || "",
-      currentlyWorking: exp.currentlyWorking,
+      startDate: exp.startDate ? exp.startDate.split("T")[0] : "",
+      endDate: exp.endDate ? exp.endDate.split("T")[0] : "",
+      currentlyWorking: exp.endDate === null,
     });
     setEditingExpId(exp.id);
     setIsDialogOpen(true);
   };
 
-  const handleDeleteExperience = (id: string) => {
-    setExperience(experience.filter((exp) => exp.id !== id));
-
-    toast("", {
-      description: "The experience entry has been removed from your profile.",
-    });
+  const handleDeleteConfirmation = (id: string) => {
+    setDeletingExpId(id);
+    setIsDeleteDialogOpen(true);
   };
 
-  function onSubmit(data: ExperienceFormValues) {
-    setIsLoading(true);
+  const handleDeleteExperience = async () => {
+    try {
+      setIsDeleting(true);
 
-    // Simulate API call
-    setTimeout(() => {
+      // Call the delete experience API
+      await specialistService.deleteExperience(specialistId as string, {
+        experienceIds: [deletingExpId as string],
+      });
+
+      setExperience(experience.filter((exp) => exp.id !== deletingExpId));
+      toast.success("The experience entry has been removed from your profile");
+
+      setIsDeleteDialogOpen(false);
+      setDeletingExpId(null);
+    } catch (error) {
+      console.error("Error deleting experience:", error);
+      toast.error("Failed to delete experience entry");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  async function onSubmit(data: ExperienceFormValues) {
+    try {
+      setIsLoading(true);
+
+      const experienceData = {
+        company: data.company,
+        position: data.position,
+        description: data.description || null,
+        startDate: data.startDate
+          ? new Date(data.startDate).toISOString()
+          : null,
+        endDate: data.currentlyWorking
+          ? null
+          : data.endDate
+          ? new Date(data.endDate).toISOString()
+          : null,
+      };
+
+      let response: any;
+
       if (editingExpId) {
-        // Update existing experience
-        setExperience(
-          experience.map((exp) =>
-            exp.id === editingExpId
-              ? {
-                  ...exp,
-                  company: data.company,
-                  position: data.position,
-                  description: data.description || "",
-                  startDate: new Date(data.startDate),
-                  endDate: data.currentlyWorking
-                    ? null
-                    : data.endDate
-                    ? new Date(data.endDate)
-                    : null,
-                  currentlyWorking: data.currentlyWorking || false,
-                }
-              : exp
-          )
+        response = await specialistService.updateExperience(
+          specialistId as string,
+          editingExpId,
+          experienceData
         );
 
-        toast("", {
-          description: "The experience entry has been updated successfully.",
-        });
+        if (response.status === 200) {
+          setExperience(
+            experience.map((exp) =>
+              exp.id === editingExpId
+                ? { ...exp, ...response.data.data.experience }
+                : exp
+            )
+          );
+          toast.success("The experience entry has been updated successfully");
+        }
       } else {
-        // Add new experience
-        const newExp = {
-          id: `exp-${Date.now()}`,
-          company: data.company,
-          position: data.position,
-          description: data.description || "",
-          startDate: new Date(data.startDate),
-          endDate: data.currentlyWorking
-            ? null
-            : data.endDate
-            ? new Date(data.endDate)
-            : null,
-          currentlyWorking: data.currentlyWorking || false,
-        };
+        response = await specialistService.addExperience(
+          specialistId as string,
+          experienceData
+        );
 
-        setExperience([...experience, newExp]);
-
-        toast("", {
-          description: "The experience entry has been added to your profile.",
-        });
+        if (response.status === 201 || response.status === 200) {
+          // Add new experience to local state
+          setExperience([...experience, response.data.data.experience]);
+          toast.success("The experience entry has been added to your profile");
+        }
       }
 
-      setIsLoading(false);
       setIsDialogOpen(false);
-    }, 1000);
+    } catch (error) {
+      console.error("Error saving experience:", error);
+      toast.error("Failed to save experience entry");
+    } finally {
+      setIsLoading(false);
+    }
   }
 
-  const handleSaveChanges = () => {
-    setIsLoading(true);
-
-    // Simulate API call
-    setTimeout(() => {
-      console.log("Saved experience:", experience);
-      setIsLoading(false);
-
-      toast("", {
-        description: "Your work experience has been updated successfully.",
-      });
-    }, 1000);
-  };
+  if (isFetching) {
+    return (
+      <div className="flex justify-center items-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2 text-lg text-muted-foreground">
+          Loading work experience...
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -227,7 +258,7 @@ export function ExperienceSettings() {
 
         <div className="grid grid-cols-1 gap-4">
           {experience.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="text-center py-8 text-muted-foreground border rounded-md bg-muted/10">
               You haven't added any work experience yet. Add your professional
               history to enhance your profile.
             </div>
@@ -241,7 +272,7 @@ export function ExperienceSettings() {
                         <div className="flex items-center gap-2">
                           <Briefcase className="h-5 w-5 text-blue-500" />
                           <h4 className="font-medium">{exp.position}</h4>
-                          {exp.currentlyWorking && (
+                          {exp.endDate === null && (
                             <Badge
                               variant="outline"
                               className="bg-green-50 text-green-700 border-green-200"
@@ -254,9 +285,12 @@ export function ExperienceSettings() {
                         <div className="text-sm text-muted-foreground">
                           <span>
                             {format(exp.startDate, "MMM yyyy")} -{" "}
-                            {exp.currentlyWorking
+                            {exp.endDate === null
                               ? "Present"
-                              : format(exp.endDate as Date, "MMM yyyy")}
+                              : format(
+                                  new Date(exp.endDate) as Date,
+                                  "MMM yyyy"
+                                )}
                           </span>
                         </div>
                         {exp.description && (
@@ -275,7 +309,8 @@ export function ExperienceSettings() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleDeleteExperience(exp.id)}
+                          onClick={() => handleDeleteConfirmation(exp.id)}
+                          disabled={isDeleting}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -293,17 +328,6 @@ export function ExperienceSettings() {
         <Button onClick={openNewExperienceDialog}>
           <Plus className="h-4 w-4 mr-2" />
           Add Experience
-        </Button>
-
-        <Button onClick={handleSaveChanges} disabled={isLoading}>
-          {isLoading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Saving...
-            </>
-          ) : (
-            "Save Changes"
-          )}
         </Button>
       </div>
 
@@ -379,7 +403,7 @@ export function ExperienceSettings() {
                           type="date"
                           {...field}
                           disabled={watchCurrentlyWorking}
-                          value={watchCurrentlyWorking ? "" : field.value}
+                          value={watchCurrentlyWorking ? "" : field.value ?? ""}
                         />
                       </FormControl>
                       <FormMessage />
@@ -456,6 +480,41 @@ export function ExperienceSettings() {
           </Form>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this work experience from your
+              profile. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleDeleteExperience();
+              }}
+              disabled={isDeleting}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

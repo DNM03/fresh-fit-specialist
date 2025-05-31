@@ -23,9 +23,9 @@ class ApiService {
 
   delete<T = any>(
     endpoint: string,
-    params: Record<string, any> = {}
+    options: { params?: Record<string, any>; data?: any } = {}
   ): Promise<AxiosResponse<T>> {
-    return apiAxios.delete<T>(endpoint, { params });
+    return apiAxios.delete<T>(endpoint, options);
   }
 }
 

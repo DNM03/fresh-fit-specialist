@@ -169,7 +169,6 @@ export default function Appointment() {
   };
 
   const filteredAppointments = appointments.filter((appointment) => {
-    // Filter by search query (patient name or email)
     const matchesSearch =
       appointment.appointment?.user?.fullName
         ?.toLowerCase()
@@ -179,13 +178,11 @@ export default function Appointment() {
         ?.includes(searchQuery.toLowerCase()) ||
       false;
 
-    // Filter by status
     const appointmentStatus = appointment.appointment?.status || "";
     const matchesStatus =
       statusFilter === "all" ||
       appointmentStatus.toLowerCase() === statusFilter.toLowerCase();
 
-    // Filter by date
     const appointmentDate = parseISO(appointment.startTime);
     const matchesDate = selectedDate
       ? isSameDay(appointmentDate, selectedDate)
@@ -194,7 +191,6 @@ export default function Appointment() {
     return matchesSearch && matchesStatus && matchesDate;
   });
 
-  // Group appointments by date for timeline view
   const groupedAppointments = filteredAppointments.reduce(
     (acc: Record<string, AppointmentSlot[]>, appointment) => {
       const dateKey = format(parseISO(appointment.startTime), "yyyy-MM-dd");
@@ -207,7 +203,6 @@ export default function Appointment() {
     {}
   );
 
-  // Sort each day's appointments by start time
   Object.keys(groupedAppointments).forEach((dateKey) => {
     groupedAppointments[dateKey].sort(
       (a, b) =>

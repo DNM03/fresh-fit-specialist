@@ -5,7 +5,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
+// import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { authService } from "@/services";
@@ -100,7 +100,7 @@ function LoginPage() {
             )}
           />
           <div className="flex flex-row items-center justify-between w-full">
-            <div className="flex items-center space-x-2">
+            {/* <div className="flex items-center space-x-2">
               <Checkbox id="rememberMe" />
               <label
                 htmlFor="rememberMe"
@@ -108,7 +108,8 @@ function LoginPage() {
               >
                 Remember me
               </label>
-            </div>
+            </div> */}
+            <div></div>
             <div className="inline-block">
               <Link to="/forgot-password" className="text-sm relative group">
                 Forgot password

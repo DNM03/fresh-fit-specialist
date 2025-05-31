@@ -31,7 +31,6 @@ export default function AddAvailabilityPage() {
   const params = new URLSearchParams(window.location.search);
   const initialDate = params.get("date");
 
-  // State for date selection
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
     initialDate ? new Date(initialDate) : new Date()
   );
@@ -40,7 +39,7 @@ export default function AddAvailabilityPage() {
   const [isLoading, setIsLoading] = useState(false);
 
   const [recurringType, setRecurringType] = useState<
-    "ONE_MONTH" | "EVERY_MONTH"
+    "ONE_MONTH" | "EVERY_MONTH" | "ONE_DAY"
   >("ONE_MONTH");
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -84,12 +83,10 @@ export default function AddAvailabilityPage() {
         return;
       }
 
-      console.log("Availability data:", availabilityData);
-
       toast.success("", {
         description: "Availability has been saved successfully",
       });
-      navigate(-1);
+      navigate("/availability");
     } catch (error) {
       console.error("Error saving availability:", error);
       toast.error("An error occurred while saving availability");
@@ -200,10 +197,18 @@ export default function AddAvailabilityPage() {
                     <RadioGroup
                       value={recurringType}
                       onValueChange={(value) =>
-                        setRecurringType(value as "ONE_MONTH" | "EVERY_MONTH")
+                        setRecurringType(
+                          value as "ONE_MONTH" | "EVERY_MONTH" | "ONE_DAY"
+                        )
                       }
                       className="space-y-4"
                     >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="ONE_DAY" id="one-day" />
+                        <Label htmlFor="one-day" className="font-normal">
+                          One Day Only
+                        </Label>
+                      </div>
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="ONE_MONTH" id="one-month" />
                         <Label htmlFor="one-month" className="font-normal">
@@ -259,7 +264,9 @@ export default function AddAvailabilityPage() {
                     </div>
                     <div className="mt-3 text-xs text-green-800 font-medium">
                       Recurrence:{" "}
-                      {recurringType === "ONE_MONTH"
+                      {recurringType === "ONE_DAY"
+                        ? "One Day Only"
+                        : recurringType === "ONE_MONTH"
                         ? "One Month Only"
                         : "Every Month"}
                     </div>

@@ -11,7 +11,10 @@ import {
   CustomRequestConfig,
   VerifyOtpCodeData,
 } from "@/types/user.type";
-const API_URL = import.meta.env.VITE_API_URL || "https://your-api-url.com/api";
+const API_URL =
+  import.meta.env.VITE_API_PRODUCTION_URL || "https://your-api-url.com/api";
+const MEDIA_API_URL =
+  import.meta.env.VITE_MEDIA_API_URL || "https://your-media-api-url.com";
 
 const authAxios: AxiosInstance = axios.create({
   baseURL: API_URL,
@@ -22,6 +25,13 @@ const authAxios: AxiosInstance = axios.create({
 
 const apiAxios: AxiosInstance = axios.create({
   baseURL: API_URL,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+const mediaAxios: AxiosInstance = axios.create({
+  baseURL: MEDIA_API_URL,
   headers: {
     "Content-Type": "application/json",
   },
@@ -55,6 +65,20 @@ apiAxios.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+mediaAxios.interceptors.request.use(
+  (config: InternalAxiosRequestConfig): InternalAxiosRequestConfig => {
+    const token = getAuthToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  }
+);
+
+const emitTokenExpiredEvent = () => {
+  window.dispatchEvent(new Event("auth:tokenExpired"));
+};
+
 apiAxios.interceptors.response.use(
   (response): AxiosResponse => response,
   async (error) => {
@@ -67,6 +91,7 @@ apiAxios.interceptors.response.use(
         const refreshToken = getRefreshToken();
         if (!refreshToken) {
           clearAuth();
+          emitTokenExpiredEvent();
           return Promise.reject(error);
         }
 
@@ -82,6 +107,44 @@ apiAxios.interceptors.response.use(
         return apiAxios(originalRequest);
       } catch (refreshError) {
         clearAuth();
+        emitTokenExpiredEvent();
+        return Promise.reject(refreshError);
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
+
+mediaAxios.interceptors.response.use(
+  (response): AxiosResponse => response,
+  async (error) => {
+    const originalRequest = error.config as CustomRequestConfig;
+
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      try {
+        const refreshToken = getRefreshToken();
+        if (!refreshToken) {
+          clearAuth();
+          emitTokenExpiredEvent();
+          return Promise.reject(error);
+        }
+
+        const response = await refreshAccessToken(refreshToken);
+
+        const { message, result } = response.data;
+        console.log("Token refreshed successfully", message, response.data);
+        saveTokens(result.access_token, result.refresh_token);
+
+        if (originalRequest.headers) {
+          originalRequest.headers.Authorization = `Bearer ${result.access_token}`;
+        }
+        return mediaAxios(originalRequest);
+      } catch (refreshError) {
+        clearAuth();
+        emitTokenExpiredEvent();
         return Promise.reject(refreshError);
       }
     }
@@ -210,7 +273,8 @@ const authService = {
   isAuthenticated,
   getAuthToken,
   getRefreshToken,
+  emitTokenExpiredEvent,
 };
 
 export default authService;
-export { apiAxios };
+export { apiAxios, mediaAxios };

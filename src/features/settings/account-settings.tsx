@@ -21,22 +21,23 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { userService } from "@/services";
 
 const passwordFormSchema = z
   .object({
-    currentPassword: z.string().min(8, {
+    old_password: z.string().min(8, {
       message: "Password must be at least 8 characters.",
     }),
-    newPassword: z.string().min(8, {
+    new_password: z.string().min(8, {
       message: "Password must be at least 8 characters.",
     }),
-    confirmPassword: z.string().min(8, {
+    confirm_password: z.string().min(8, {
       message: "Password must be at least 8 characters.",
     }),
   })
-  .refine((data) => data.newPassword === data.confirmPassword, {
+  .refine((data) => data.new_password === data.confirm_password, {
     message: "Passwords do not match",
-    path: ["confirmPassword"],
+    path: ["confirm_password"],
   });
 
 type PasswordFormValues = z.infer<typeof passwordFormSchema>;
@@ -47,31 +48,49 @@ export function AccountSettings() {
   const form = useForm<PasswordFormValues>({
     resolver: zodResolver(passwordFormSchema),
     defaultValues: {
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
+      old_password: "",
+      new_password: "",
+      confirm_password: "",
     },
     mode: "onChange",
   });
 
-  function onSubmit(data: PasswordFormValues) {
-    setIsLoading(true);
+  async function onSubmit(data: PasswordFormValues) {
+    try {
+      setIsLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      console.log(data);
+      const response = await userService.changePassword({
+        old_password: data.old_password,
+        new_password: data.new_password,
+        confirm_password: data.confirm_password,
+      });
+
+      if (response.status === 200) {
+        form.reset({
+          old_password: "",
+          new_password: "",
+          confirm_password: "",
+        });
+
+        toast.success("Password updated successfully", {
+          description:
+            "Your password has been changed. Please use your new password next time you log in.",
+        });
+      } else {
+        throw new Error("Failed to update password");
+      }
+    } catch (error: any) {
+      console.error("Error updating password:", error);
+
+      const errorMessage =
+        error.response?.data?.message ||
+        "Failed to update password. Please try again.";
+      toast.error("Error updating password", {
+        description: errorMessage,
+      });
+    } finally {
       setIsLoading(false);
-
-      form.reset({
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
-      });
-
-      toast("Password updated", {
-        description: "Your password has been updated successfully.",
-      });
-    }, 1000);
+    }
   }
 
   return (
@@ -91,7 +110,7 @@ export function AccountSettings() {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
                 control={form.control}
-                name="currentPassword"
+                name="old_password"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Current Password</FormLabel>
@@ -106,7 +125,7 @@ export function AccountSettings() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
-                  name="newPassword"
+                  name="new_password"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>New Password</FormLabel>
@@ -120,7 +139,7 @@ export function AccountSettings() {
 
                 <FormField
                   control={form.control}
-                  name="confirmPassword"
+                  name="confirm_password"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Confirm New Password</FormLabel>
@@ -147,187 +166,6 @@ export function AccountSettings() {
           </Form>
         </CardContent>
       </Card>
-
-      {/* <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Bell className="h-5 w-5 text-blue-500" />
-            <CardTitle>Notification Preferences</CardTitle>
-          </div>
-          <CardDescription>
-            Manage how you receive notifications and updates.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <h4 className="font-medium">Email Notifications</h4>
-              <p className="text-sm text-muted-foreground">
-                Receive notifications via email
-              </p>
-            </div>
-            <Switch
-              checked={emailNotifications}
-              onCheckedChange={setEmailNotifications}
-            />
-          </div>
-
-          <Separator />
-
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <h4 className="font-medium">SMS Notifications</h4>
-              <p className="text-sm text-muted-foreground">
-                Receive notifications via text message
-              </p>
-            </div>
-            <Switch
-              checked={smsNotifications}
-              onCheckedChange={setSmsNotifications}
-            />
-          </div>
-
-          <Separator />
-
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <h4 className="font-medium">Appointment Reminders</h4>
-              <p className="text-sm text-muted-foreground">
-                Receive reminders about upcoming appointments
-              </p>
-            </div>
-            <Switch
-              checked={appointmentReminders}
-              onCheckedChange={setAppointmentReminders}
-            />
-          </div>
-
-          <Separator />
-
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <h4 className="font-medium">Marketing Emails</h4>
-              <p className="text-sm text-muted-foreground">
-                Receive updates about new features and promotions
-              </p>
-            </div>
-            <Switch
-              checked={marketingEmails}
-              onCheckedChange={setMarketingEmails}
-            />
-          </div>
-        </CardContent>
-        <CardFooter>
-          <Button onClick={handleSaveNotifications} disabled={isLoading}>
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              "Save Notification Preferences"
-            )}
-          </Button>
-        </CardFooter>
-      </Card> */}
-
-      {/* <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Shield className="h-5 w-5 text-blue-500" />
-            <CardTitle>Security Settings</CardTitle>
-          </div>
-          <CardDescription>
-            Manage your account security settings.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <h4 className="font-medium">Two-Factor Authentication</h4>
-              <p className="text-sm text-muted-foreground">
-                Add an extra layer of security to your account
-              </p>
-            </div>
-            <Switch
-              checked={twoFactorAuth}
-              onCheckedChange={setTwoFactorAuth}
-            />
-          </div>
-
-          <Separator />
-
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <h4 className="font-medium">Session Timeout</h4>
-              <p className="text-sm text-muted-foreground">
-                Automatically log out after a period of inactivity
-              </p>
-            </div>
-            <Select value={sessionTimeout} onValueChange={setSessionTimeout}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Select timeout" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="15">15 minutes</SelectItem>
-                <SelectItem value="30">30 minutes</SelectItem>
-                <SelectItem value="60">1 hour</SelectItem>
-                <SelectItem value="120">2 hours</SelectItem>
-                <SelectItem value="never">Never</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-        <CardFooter>
-          <Button onClick={handleSaveSecurity} disabled={isLoading}>
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              "Save Security Settings"
-            )}
-          </Button>
-        </CardFooter>
-      </Card> */}
-
-      {/* <Card>
-        <CardHeader>
-          <CardTitle>Account Actions</CardTitle>
-          <CardDescription>
-            Manage your account status and data.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-col space-y-2">
-            <h4 className="font-medium">Sign Out of All Devices</h4>
-            <p className="text-sm text-muted-foreground">
-              This will log you out from all devices where you're currently
-              signed in.
-            </p>
-            <Button variant="outline" className="w-fit">
-              <LogOut className="h-4 w-4 mr-2" />
-              Sign Out Everywhere
-            </Button>
-          </div>
-
-          <Separator />
-
-          <div className="flex flex-col space-y-2">
-            <h4 className="font-medium text-red-600">Deactivate Account</h4>
-            <p className="text-sm text-muted-foreground">
-              Temporarily deactivate your account. You can reactivate it later.
-            </p>
-            <Button
-              variant="outline"
-              className="w-fit text-red-600 border-red-200 hover:bg-red-50"
-            >
-              Deactivate Account
-            </Button>
-          </div>
-        </CardContent>
-      </Card> */}
     </div>
   );
 }
