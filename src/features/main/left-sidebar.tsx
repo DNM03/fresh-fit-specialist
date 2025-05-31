@@ -1,6 +1,7 @@
 import {
   CalendarCheck2,
-  FileText,
+  CalendarClock,
+  // FileText,
   Handshake,
   History,
   House,
@@ -9,7 +10,7 @@ import {
 import app_logo from "@/assets/images/freshfit_logo.png";
 
 import { useLocation, useNavigate } from "react-router-dom";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+// import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 function LeftSidebar() {
   const location = useLocation();
@@ -27,14 +28,19 @@ function LeftSidebar() {
     },
     {
       label: "Availability",
-      icon: <History size={20} />,
+      icon: <CalendarClock size={20} />,
       path: "/availability",
     },
     {
-      label: "Records",
-      icon: <FileText size={20} />,
-      path: "/records",
+      label: "History",
+      icon: <History size={20} />,
+      path: "/history",
     },
+    // {
+    //   label: "Records",
+    //   icon: <FileText size={20} />,
+    //   path: "/records",
+    // },
     {
       label: "Community",
       icon: <Handshake size={20} />,
@@ -85,7 +91,7 @@ function LeftSidebar() {
         <LogOut size={18} />
         Log out
       </button> */}
-      <div className="mt-auto flex flex-row items-center gap-x-4 w-full px-4 border-t pt-4">
+      {/* <div className="mt-auto flex flex-row items-center gap-x-4 w-full px-4 border-t pt-4">
         <Avatar>
           <AvatarImage src="https://github.com/shadcn.png" />
           <AvatarFallback>CN</AvatarFallback>
@@ -94,7 +100,7 @@ function LeftSidebar() {
           <p className="font-bold text-sm">Dr. John Doe</p>
           <p className="text-sm">Heart</p>
         </div>
-      </div>
+      </div> */}
     </div>
   );
 }

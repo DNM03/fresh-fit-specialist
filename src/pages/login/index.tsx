@@ -5,11 +5,16 @@ import { Link, useNavigate } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
+// import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import { authService } from "@/services";
 
 function LoginPage() {
   const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
+  const [_error, setError] = useState<string | null>(null);
+
   const {
     control,
     handleSubmit,
@@ -29,8 +34,23 @@ function LoginPage() {
   const onSubmit: SubmitHandler<{ email: string; password: string }> = async (
     data
   ) => {
-    console.log(data);
-    navigate("/");
+    try {
+      setIsLoading(true);
+      const response = await authService.login(data.email, data.password);
+      console.log("Login successful", response);
+      navigate("/");
+    } catch (error: any) {
+      if (error.response?.status === 401) {
+        setError("Invalid email or password");
+      } else if (error.response?.status === 429) {
+        setError("Too many attempts. Please try again later.");
+      } else {
+        setError("An error occurred. Please try again.");
+      }
+      console.error("Login error:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
   return (
     <div
@@ -80,7 +100,7 @@ function LoginPage() {
             )}
           />
           <div className="flex flex-row items-center justify-between w-full">
-            <div className="flex items-center space-x-2">
+            {/* <div className="flex items-center space-x-2">
               <Checkbox id="rememberMe" />
               <label
                 htmlFor="rememberMe"
@@ -88,7 +108,8 @@ function LoginPage() {
               >
                 Remember me
               </label>
-            </div>
+            </div> */}
+            <div></div>
             <div className="inline-block">
               <Link to="/forgot-password" className="text-sm relative group">
                 Forgot password
@@ -100,8 +121,9 @@ function LoginPage() {
             type="submit"
             style={{ width: "100%" }}
             // className="w-full bg-slate-700 focus:ring-2 focus:ring-offset-1 focus:ring-slate-900"
+            disabled={isLoading}
           >
-            Login
+            {isLoading ? "Logging in..." : "Login"}
           </Button>
           {/* <div className="text-sm">
             {"Don't have an account? "}

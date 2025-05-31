@@ -1,5 +1,3 @@
-"use client";
-
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -15,7 +13,7 @@ import { SkillsSettings } from "@/features/settings/skills-settings";
 import { CertificationsSettings } from "@/features/settings/certifications-settings";
 import { EducationSettings } from "@/features/settings/education-settings";
 import { ExperienceSettings } from "@/features/settings/experience-settings";
-import { ReviewsSettings } from "@/features/settings/reviews-settings";
+// import { ReviewsSettings } from "@/features/settings/reviews-settings";
 import { AccountSettings } from "@/features/settings/account-settings";
 
 export default function SettingsPage() {
@@ -38,13 +36,13 @@ export default function SettingsPage() {
         onValueChange={setActiveTab}
         className="space-y-4"
       >
-        <TabsList className="grid grid-cols-2 md:grid-cols-7 gap-2">
+        <TabsList className="grid grid-cols-2 md:grid-cols-6 gap-2">
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="skills">Skills</TabsTrigger>
           <TabsTrigger value="certifications">Certifications</TabsTrigger>
           <TabsTrigger value="education">Education</TabsTrigger>
           <TabsTrigger value="experience">Experience</TabsTrigger>
-          <TabsTrigger value="reviews">Reviews</TabsTrigger>
+          {/* <TabsTrigger value="reviews">Reviews</TabsTrigger> */}
           <TabsTrigger value="account">Account</TabsTrigger>
         </TabsList>
 
@@ -118,7 +116,7 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </TabsContent>
-
+        {/* 
         <TabsContent value="reviews">
           <Card>
             <CardHeader>
@@ -131,7 +129,7 @@ export default function SettingsPage() {
               <ReviewsSettings />
             </CardContent>
           </Card>
-        </TabsContent>
+        </TabsContent> */}
 
         <TabsContent value="account">
           <Card>

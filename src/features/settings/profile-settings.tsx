@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -21,12 +21,63 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2, Upload } from "lucide-react";
+import { Loader2, Upload, Check, ChevronsUpDown, X } from "lucide-react";
+import specialistService from "@/services/specialist.service";
+import { userService } from "@/services";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import mediaService from "@/services/media.service";
+
+const availableLanguages = [
+  { label: "English", value: "English" },
+  { label: "Vietnamese", value: "Vietnamese" },
+  { label: "French", value: "French" },
+  { label: "German", value: "German" },
+  { label: "Spanish", value: "Spanish" },
+  { label: "Chinese", value: "Chinese" },
+  { label: "Japanese", value: "Japanese" },
+  { label: "Korean", value: "Korean" },
+  { label: "Russian", value: "Russian" },
+  { label: "Arabic", value: "Arabic" },
+  { label: "Hindi", value: "Hindi" },
+  { label: "Portuguese", value: "Portuguese" },
+  { label: "Italian", value: "Italian" },
+  { label: "Dutch", value: "Dutch" },
+  { label: "Thai", value: "Thai" },
+];
+
+const specializations = [
+  { label: "Nutrition Specialist", value: "Nutrition Specialist" },
+  { label: "Fitness Coach", value: "Fitness Coach" },
+  { label: "Weight Management Expert", value: "Weight Management Expert" },
+  { label: "Sports Nutritionist", value: "Sports Nutritionist" },
+  { label: "Dietitian", value: "Dietitian" },
+  { label: "Personal Trainer", value: "Personal Trainer" },
+  { label: "Bodybuilding Coach", value: "Bodybuilding Coach" },
+  { label: "Wellness Coach", value: "Wellness Coach" },
+  { label: "Orthopedic Specialist", value: "Orthopedic Specialist" },
+  { label: "Physical Therapist", value: "Physical Therapist" },
+];
 
 const profileFormSchema = z.object({
+  fullName: z.string().min(2, {
+    message: "Name must be at least 2 characters.",
+  }),
   specialization: z.string().min(2, {
     message: "Specialization must be at least 2 characters.",
   }),
@@ -41,43 +92,150 @@ const profileFormSchema = z.object({
     .max(500, {
       message: "Bio must not be longer than 500 characters.",
     }),
-  languages: z.string().min(2, {
-    message: "Please enter at least one language.",
+  languages: z.array(z.string()).min(1, {
+    message: "Please select at least one language.",
   }),
   consultationFee: z.coerce.number().min(0, {
     message: "Consultation fee must be a positive number.",
   }),
+  avatar: z.string().optional(),
 });
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
-const defaultValues: Partial<ProfileFormValues> = {
-  specialization: "Cardiology",
-  experienceYears: 10,
-  bio: "Board-certified cardiologist with 10 years of experience specializing in preventive cardiology and heart disease management. Passionate about patient education and holistic approaches to heart health.",
-  languages: "English, Spanish",
-  consultationFee: 150,
-};
-
 export function ProfileSettings() {
   const [isLoading, setIsLoading] = useState(false);
+  const [initialData, setInitialData] = useState<any>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState("");
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
-    defaultValues,
+    defaultValues: {
+      fullName: "",
+      specialization: "",
+      experienceYears: 0,
+      bio: "",
+      languages: [],
+      consultationFee: 0,
+      avatar: "",
+    },
     mode: "onChange",
   });
 
-  function onSubmit(data: ProfileFormValues) {
-    setIsLoading(true);
+  // Fetch specialist profile data
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        // Fetch user profile for email
+        const userResponse = await userService.getCurrentUser();
+        if (userResponse?.data?.result) {
+          setUserEmail(userResponse.data.result.email);
+          setAvatarPreview(userResponse.data.result.avatar || null);
+        }
 
-    setTimeout(() => {
-      console.log(data);
+        // Fetch specialist details
+        const response = await specialistService.getSpecialistByAccessToken();
+        if (response?.data?.data?.expertInfo) {
+          const expertData = response.data.data.expertInfo;
+
+          setInitialData(expertData);
+
+          // Reset form with fetched values
+          form.reset({
+            fullName: expertData.fullName || "",
+            specialization: expertData.specialization || "",
+            experienceYears: expertData.experience_years || 0,
+            bio: expertData.bio || "",
+            languages: Array.isArray(expertData.languages)
+              ? expertData.languages
+              : [],
+            consultationFee: expertData.consultation_fee
+              ? parseFloat(expertData.consultation_fee)
+              : 0,
+            avatar: userResponse.data.result.avatar || "",
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching specialist profile:", error);
+        toast.error("Failed to load profile data");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      const file = event.target.files[0];
+
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("Image file size should not exceed 5MB");
+        return;
+      }
+
+      // Check file type
+      if (!file.type.startsWith("image/")) {
+        toast.error("Only image files are allowed");
+        return;
+      }
+
+      setAvatarFile(file);
+      const objectUrl = URL.createObjectURL(file);
+      setAvatarPreview(objectUrl);
+    }
+  };
+
+  const formatVND = (amount: number) => {
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  async function onSubmit(data: ProfileFormValues) {
+    try {
+      setIsLoading(true);
+
+      // Prepare the data for API call
+      const updateData: any = {
+        fullName: data.fullName,
+        specialization: data.specialization,
+        experience_years: data.experienceYears,
+        bio: data.bio,
+        languages: data.languages,
+        consultation_fee: data.consultationFee,
+      };
+
+      let imageRes;
+      if (avatarFile) {
+        imageRes = await mediaService.backupUploadImage(avatarFile);
+      }
+
+      const response = await specialistService.updateGeneralInfo(
+        initialData?.id,
+        {
+          ...updateData,
+          avatar: imageRes?.result?.url || initialData?.user?.avatar,
+        }
+      );
+
+      if (response.status === 200) {
+        toast.success("Profile updated successfully");
+      } else {
+        throw new Error("Failed to update profile");
+      }
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      toast.error("Failed to update profile");
+    } finally {
       setIsLoading(false);
-      toast("", {
-        description: "Your profile information has been updated successfully.",
-      });
-    }, 1000);
+    }
   }
 
   return (
@@ -86,175 +244,288 @@ export function ProfileSettings() {
         <div className="flex flex-col items-center space-y-2">
           <Avatar className="h-24 w-24">
             <AvatarImage
-              src="/placeholder.svg?height=96&width=96"
-              alt="Dr. Profile"
+              src={avatarPreview || "/placeholder.svg?height=96&width=96"}
+              alt="Profile"
             />
-            <AvatarFallback>DR</AvatarFallback>
+            <AvatarFallback>
+              {form.watch("fullName")?.charAt(0) || "S"}
+            </AvatarFallback>
           </Avatar>
 
           <div className="flex flex-col items-center">
             <Label
               htmlFor="picture"
-              className="text-sm text-muted-foreground cursor-pointer"
+              className="text-sm text-muted-foreground cursor-pointer hover:text-primary"
             >
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 px-3 py-1 rounded-md border border-dashed hover:bg-muted">
                 <Upload className="h-4 w-4" />
                 <span>Change photo</span>
               </div>
             </Label>
-            <Input id="picture" type="file" className="hidden" />
+            <Input
+              id="picture"
+              type="file"
+              className="hidden"
+              onChange={handleAvatarChange}
+              accept="image/*"
+            />
+            {avatarPreview && avatarPreview !== initialData?.user?.avatar && (
+              <p className="text-xs text-green-600 mt-1">New image selected</p>
+            )}
           </div>
         </div>
 
         <div className="flex-1 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="name">Full Name</Label>
-              <Input id="name" defaultValue="Dr. Alex Morgan" disabled />
-              <p className="text-xs text-muted-foreground mt-1">
-                To change your name, please contact support.
-              </p>
-            </div>
-            <div>
               <Label htmlFor="email">Email</Label>
-              <Input id="email" defaultValue="dr.alex@example.com" disabled />
+              <Input id="email" value={userEmail} disabled />
               <p className="text-xs text-muted-foreground mt-1">
-                Your email is used for login and notifications.
+                Email cannot be changed
               </p>
             </div>
           </div>
         </div>
       </div>
 
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <FormField
-              control={form.control}
-              name="specialization"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Specialization</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
+      {isLoading && !form.formState.isSubmitting ? (
+        <div className="flex justify-center py-8">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <FormField
+                control={form.control}
+                name="fullName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Full Name</FormLabel>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a specialization" />
-                      </SelectTrigger>
+                      <Input {...field} placeholder="Dr. John Doe" />
                     </FormControl>
-                    <SelectContent>
-                      <SelectItem value="Cardiology">Cardiology</SelectItem>
-                      <SelectItem value="Dermatology">Dermatology</SelectItem>
-                      <SelectItem value="Neurology">Neurology</SelectItem>
-                      <SelectItem value="Orthopedics">Orthopedics</SelectItem>
-                      <SelectItem value="Pediatrics">Pediatrics</SelectItem>
-                      <SelectItem value="Psychiatry">Psychiatry</SelectItem>
-                      <SelectItem value="Oncology">Oncology</SelectItem>
-                      <SelectItem value="Gynecology">Gynecology</SelectItem>
-                      <SelectItem value="Urology">Urology</SelectItem>
-                      <SelectItem value="Ophthalmology">
-                        Ophthalmology
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormDescription>
-                    Your primary medical specialization.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    <FormDescription>
+                      Your professional name displayed to patients
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="specialization"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Specialization</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a specialization" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {specializations.map((spec) => (
+                          <SelectItem key={spec.value} value={spec.value}>
+                            {spec.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>
+                      Your primary professional specialization
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <FormField
               control={form.control}
-              name="experienceYears"
+              name="bio"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Years of Experience</FormLabel>
+                  <FormLabel>Professional Bio</FormLabel>
                   <FormControl>
-                    <Input type="number" {...field} />
+                    <Textarea
+                      placeholder="Write your professional bio, experience, and qualifications..."
+                      className="resize-none min-h-[120px]"
+                      {...field}
+                    />
                   </FormControl>
                   <FormDescription>
-                    Total years of professional experience.
+                    This will be displayed on your public profile. Max 500
+                    characters.
+                    <span className="float-right text-xs">
+                      {field.value?.length || 0}/500
+                    </span>
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
-          </div>
 
-          <FormField
-            control={form.control}
-            name="bio"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Professional Bio</FormLabel>
-                <FormControl>
-                  <Textarea
-                    placeholder="Write a brief professional bio..."
-                    className="resize-none min-h-[120px]"
-                    {...field}
-                  />
-                </FormControl>
-                <FormDescription>
-                  This will be displayed on your public profile. Max 500
-                  characters.
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <FormField
+                control={form.control}
+                name="experienceYears"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Years of Experience</FormLabel>
+                    <FormControl>
+                      <Input type="number" {...field} min="0" />
+                    </FormControl>
+                    <FormDescription>
+                      Total years of professional experience
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <FormField
+                control={form.control}
+                name="consultationFee"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Consultation Fee (VND)</FormLabel>
+                    <FormControl>
+                      <Input type="number" {...field} min="0" step="10000" />
+                    </FormControl>
+                    <FormDescription>
+                      Your standard consultation fee in VND
+                      {field.value > 0 && (
+                        <span className="ml-1 text-xs font-medium">
+                          ({formatVND(field.value)})
+                        </span>
+                      )}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
             <FormField
               control={form.control}
               name="languages"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Languages</FormLabel>
-                  <FormControl>
-                    <Input {...field} placeholder="English, Spanish, etc." />
-                  </FormControl>
+                  <div className="mb-2">
+                    {field.value?.map((language) => (
+                      <Badge
+                        key={language}
+                        className="mr-1 mb-1"
+                        variant="secondary"
+                      >
+                        {language}
+                        <button
+                          type="button"
+                          className="ml-1 rounded-full outline-none hover:bg-muted"
+                          onClick={() => {
+                            const filtered = field.value.filter(
+                              (l) => l !== language
+                            );
+                            form.setValue("languages", filtered, {
+                              shouldValidate: true,
+                            });
+                          }}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          className={cn(
+                            "w-full justify-between",
+                            !field.value?.length && "text-muted-foreground"
+                          )}
+                        >
+                          {field.value?.length > 0
+                            ? `${field.value.length} language${
+                                field.value.length > 1 ? "s" : ""
+                              } selected`
+                            : "Select languages"}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full p-0">
+                      <Command>
+                        <CommandInput placeholder="Search language..." />
+                        <CommandEmpty>No language found.</CommandEmpty>
+                        <CommandGroup>
+                          {availableLanguages.map((language) => {
+                            const isSelected = field.value?.includes(
+                              language.value
+                            );
+                            return (
+                              <CommandItem
+                                key={language.value}
+                                value={language.value}
+                                onSelect={() => {
+                                  if (isSelected) {
+                                    const filtered = field.value.filter(
+                                      (l) => l !== language.value
+                                    );
+                                    form.setValue("languages", filtered, {
+                                      shouldValidate: true,
+                                    });
+                                  } else {
+                                    const updated = [
+                                      ...(field.value || []),
+                                      language.value,
+                                    ];
+                                    form.setValue("languages", updated, {
+                                      shouldValidate: true,
+                                    });
+                                  }
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    isSelected ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                {language.label}
+                              </CommandItem>
+                            );
+                          })}
+                        </CommandGroup>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                   <FormDescription>
-                    Languages you speak, separated by commas.
+                    Languages you can communicate in with patients
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="consultationFee"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Consultation Fee ($)</FormLabel>
-                  <FormControl>
-                    <Input type="number" step="0.01" {...field} />
-                  </FormControl>
-                  <FormDescription>
-                    Your standard consultation fee in USD.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
+            <Button type="submit" disabled={isLoading}>
+              {form.formState.isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save Changes"
               )}
-            />
-          </div>
-
-          <Button type="submit" disabled={isLoading}>
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              "Save Changes"
-            )}
-          </Button>
-        </form>
-      </Form>
+            </Button>
+          </form>
+        </Form>
+      )}
     </div>
   );
 }

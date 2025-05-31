@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -25,7 +25,18 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
+import specialistService from "@/services/specialist.service";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const certificationSchema = z.object({
   name: z.string().min(2, {
@@ -37,51 +48,40 @@ const certificationSchema = z.object({
   issueDate: z.string().refine((val) => !isNaN(Date.parse(val)), {
     message: "Please enter a valid date.",
   }),
-  expirationDate: z.string().optional(),
+  expirationDate: z.string().optional().nullable(),
   credentialUrl: z
     .string()
     .url({
       message: "Please enter a valid URL.",
     })
     .optional()
+    .nullable()
     .or(z.literal("")),
 });
 
 type CertificationFormValues = z.infer<typeof certificationSchema>;
 
-// Mock data for certifications
-const initialCertifications = [
-  {
-    id: "cert-1",
-    name: "Board Certification in Cardiology",
-    issuingOrganization: "American Board of Internal Medicine",
-    issueDate: new Date("2015-06-15"),
-    expirationDate: new Date("2025-06-15"),
-    credentialUrl: "https://example.com/cert/123456",
-  },
-  {
-    id: "cert-2",
-    name: "Advanced Cardiac Life Support (ACLS)",
-    issuingOrganization: "American Heart Association",
-    issueDate: new Date("2020-03-10"),
-    expirationDate: new Date("2022-03-10"),
-    credentialUrl: "https://example.com/cert/789012",
-  },
-  {
-    id: "cert-3",
-    name: "Fellowship of the American College of Cardiology (FACC)",
-    issuingOrganization: "American College of Cardiology",
-    issueDate: new Date("2017-09-22"),
-    expirationDate: null,
-    credentialUrl: "",
-  },
-];
+interface Certification {
+  id: string;
+  name: string;
+  issuingOrganization: string;
+  issueDate: string;
+  expirationDate: string | null;
+  credentialUrl: string | null;
+}
 
 export function CertificationsSettings() {
-  const [certifications, setCertifications] = useState(initialCertifications);
+  const [certifications, setCertifications] = useState<Certification[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCertId, setEditingCertId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [specialistId, setSpecialistId] = useState<string | null>(null);
+
+  // Add these state variables
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deletingCertId, setDeletingCertId] = useState<string | null>(null);
 
   const form = useForm<CertificationFormValues>({
     resolver: zodResolver(certificationSchema),
@@ -89,116 +89,179 @@ export function CertificationsSettings() {
       name: "",
       issuingOrganization: "",
       issueDate: "",
-      expirationDate: "",
+      expirationDate: null,
       credentialUrl: "",
     },
     mode: "onChange",
   });
+
+  useEffect(() => {
+    const fetchCertifications = async () => {
+      try {
+        setIsFetching(true);
+        const response = await specialistService.getSpecialistByAccessToken();
+        if (response.data) {
+          setSpecialistId(response.data.data.expertInfo.id);
+        }
+
+        if (response?.data?.data?.expertInfo.certifications) {
+          setCertifications(response.data.data.expertInfo.certifications);
+        }
+      } catch (error) {
+        console.error("Error fetching certifications:", error);
+        toast.error("Failed to load certifications");
+      } finally {
+        setIsFetching(false);
+      }
+    };
+
+    fetchCertifications();
+  }, []);
 
   const openNewCertificationDialog = () => {
     form.reset({
       name: "",
       issuingOrganization: "",
       issueDate: "",
-      expirationDate: "",
+      expirationDate: null, // Change from "" to null
       credentialUrl: "",
     });
     setEditingCertId(null);
     setIsDialogOpen(true);
   };
 
-  const openEditCertificationDialog = (cert: any) => {
+  const openEditCertificationDialog = (cert: Certification) => {
     form.reset({
-      name: cert.name,
-      issuingOrganization: cert.issuingOrganization,
-      issueDate: cert.issueDate.toISOString().split("T")[0],
+      name: cert.name || "",
+      issuingOrganization: cert.issuingOrganization || "",
+      issueDate: cert.issueDate ? cert.issueDate.split("T")[0] : "",
       expirationDate: cert.expirationDate
-        ? cert.expirationDate.toISOString().split("T")[0]
-        : "",
+        ? cert.expirationDate.split("T")[0]
+        : null,
       credentialUrl: cert.credentialUrl || "",
     });
     setEditingCertId(cert.id);
     setIsDialogOpen(true);
   };
 
-  const handleDeleteCertification = (id: string) => {
-    setCertifications(certifications.filter((cert) => cert.id !== id));
-
-    toast("", {
-      description: "The certification has been removed from your profile.",
-    });
+  const handleDeleteConfirmation = (id: string) => {
+    setDeletingCertId(id);
+    setIsDeleteDialogOpen(true);
   };
 
-  function onSubmit(data: CertificationFormValues) {
-    setIsLoading(true);
+  const handleDeleteCertification = async () => {
+    try {
+      setIsDeleting(true);
 
-    // Simulate API call
-    setTimeout(() => {
+      // const certToDelete = [deletingCertId];
+
+      await specialistService.deleteCertification(specialistId as string, {
+        certificationIds: [deletingCertId], // Note the array brackets and property name
+      });
+
+      setCertifications(
+        certifications.filter((cert) => cert.id !== deletingCertId)
+      );
+      toast.success("Certification has been deleted successfully");
+
+      setIsDeleteDialogOpen(false);
+      setDeletingCertId(null);
+    } catch (error) {
+      console.error("Error deleting certification:", error);
+      toast.error("Failed to delete certification");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  async function onSubmit(data: CertificationFormValues) {
+    try {
+      setIsLoading(true);
+
+      const certificationData = {
+        name: data.name,
+        issuingOrganization: data.issuingOrganization,
+        issueDate: data.issueDate
+          ? new Date(data.issueDate).toISOString()
+          : null,
+        expirationDate: data.expirationDate
+          ? new Date(data.expirationDate).toISOString()
+          : null,
+        credentialUrl: data.credentialUrl || null,
+      };
+
+      let response: any;
+
       if (editingCertId) {
-        // Update existing certification
-        setCertifications(
-          certifications.map((cert) =>
-            cert.id === editingCertId
-              ? {
-                  ...cert,
-                  name: data.name,
-                  issuingOrganization: data.issuingOrganization,
-                  issueDate: new Date(data.issueDate),
-                  expirationDate: data.expirationDate
-                    ? new Date(data.expirationDate)
-                    : null,
-                  credentialUrl: data.credentialUrl || "",
-                }
-              : cert
-          )
+        response = await specialistService.updateCertification(
+          specialistId as string,
+          editingCertId,
+          certificationData
         );
 
-        toast("", {
-          description: "The certification has been updated successfully.",
-        });
+        if (response.status === 200) {
+          setCertifications(
+            certifications.map((cert) =>
+              cert.id === editingCertId
+                ? { ...cert, ...response.data.data.certification }
+                : cert
+            )
+          );
+          toast.success("Certification updated successfully");
+        }
       } else {
-        // Add new certification
-        const newCert = {
-          id: `cert-${Date.now()}`,
-          name: data.name,
-          issuingOrganization: data.issuingOrganization,
-          issueDate: new Date(data.issueDate),
-          expirationDate: data.expirationDate
-            ? new Date(data.expirationDate)
-            : null,
-          credentialUrl: data.credentialUrl || "",
-        };
+        response = await specialistService.addCertification(
+          specialistId as string,
+          certificationData
+        );
 
-        setCertifications([...certifications, newCert]);
-
-        toast("", {
-          description: "The certification has been added to your profile.",
-        });
+        if (response.status === 201 || response.status === 200) {
+          setCertifications([
+            ...certifications,
+            response.data.data.certification,
+          ]);
+          toast.success("Certification added successfully");
+        }
       }
 
-      setIsLoading(false);
       setIsDialogOpen(false);
-    }, 1000);
+    } catch (error) {
+      console.error("Error saving certification:", error);
+      toast.error("Failed to save certification");
+    } finally {
+      setIsLoading(false);
+    }
   }
 
-  const handleSaveChanges = () => {
-    setIsLoading(true);
-
-    // Simulate API call
-    setTimeout(() => {
-      console.log("Saved certifications:", certifications);
-      setIsLoading(false);
-
-      toast("", {
-        description: "Your certifications have been updated successfully.",
-      });
-    }, 1000);
+  const isExpired = (dateStr: string | null) => {
+    if (!dateStr) return false;
+    try {
+      const expirationDate = new Date(dateStr);
+      return new Date() > expirationDate;
+    } catch (e) {
+      return false;
+    }
   };
 
-  const isExpired = (date: Date | null) => {
-    if (!date) return false;
-    return new Date() > date;
+  const formatDate = (dateStr: string | null) => {
+    if (!dateStr) return "";
+    try {
+      return format(parseISO(dateStr), "MMM yyyy");
+    } catch (e) {
+      return "Invalid date";
+    }
   };
+
+  if (isFetching) {
+    return (
+      <div className="flex justify-center items-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2 text-lg text-muted-foreground">
+          Loading certifications...
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -212,7 +275,7 @@ export function CertificationsSettings() {
 
         <div className="grid grid-cols-1 gap-4">
           {certifications.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="text-center py-8 text-muted-foreground border rounded-md bg-muted/10">
               You haven't added any certifications yet. Add certifications to
               showcase your credentials.
             </div>
@@ -238,14 +301,11 @@ export function CertificationsSettings() {
                           {cert.issuingOrganization}
                         </p>
                         <div className="text-sm">
-                          <span>
-                            Issued: {format(cert.issueDate, "MMM yyyy")}
-                          </span>
+                          <span>Issued: {formatDate(cert.issueDate)}</span>
                           {cert.expirationDate && (
                             <span>
                               {" "}
-                              • Expires:{" "}
-                              {format(cert.expirationDate, "MMM yyyy")}
+                              • Expires: {formatDate(cert.expirationDate)}
                             </span>
                           )}
                         </div>
@@ -274,7 +334,8 @@ export function CertificationsSettings() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleDeleteCertification(cert.id)}
+                          onClick={() => handleDeleteConfirmation(cert.id)}
+                          disabled={isDeleting}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -288,21 +349,10 @@ export function CertificationsSettings() {
         </div>
       </div>
 
-      <div className="flex justify-between items-center">
+      <div className="flex justify-center md:justify-start">
         <Button onClick={openNewCertificationDialog}>
           <Plus className="h-4 w-4 mr-2" />
           Add Certification
-        </Button>
-
-        <Button onClick={handleSaveChanges} disabled={isLoading}>
-          {isLoading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Saving...
-            </>
-          ) : (
-            "Save Changes"
-          )}
         </Button>
       </div>
 
@@ -329,7 +379,7 @@ export function CertificationsSettings() {
                     <FormLabel>Certification Name</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="e.g., Board Certification in Cardiology"
+                        placeholder="e.g., Board Certification in Nutrition"
                         {...field}
                       />
                     </FormControl>
@@ -346,7 +396,7 @@ export function CertificationsSettings() {
                     <FormLabel>Issuing Organization</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="e.g., American Board of Internal Medicine"
+                        placeholder="e.g., American Nutrition Association"
                         {...field}
                       />
                     </FormControl>
@@ -366,6 +416,9 @@ export function CertificationsSettings() {
                         <Input type="date" {...field} />
                       </FormControl>
                       <FormMessage />
+                      <FormDescription>
+                        The date when the certification was issued.
+                      </FormDescription>
                     </FormItem>
                   )}
                 />
@@ -377,7 +430,14 @@ export function CertificationsSettings() {
                     <FormItem>
                       <FormLabel>Expiration Date (Optional)</FormLabel>
                       <FormControl>
-                        <Input type="date" {...field} />
+                        <Input
+                          type="date"
+                          value={field.value || ""}
+                          onChange={(e) => {
+                            // Handle empty string properly
+                            field.onChange(e.target.value || null);
+                          }}
+                        />
                       </FormControl>
                       <FormDescription>
                         Leave blank if the certification does not expire.
@@ -397,7 +457,8 @@ export function CertificationsSettings() {
                     <FormControl>
                       <Input
                         placeholder="https://example.com/verify/credential"
-                        {...field}
+                        value={field.value || ""}
+                        onChange={(e) => field.onChange(e.target.value)}
                       />
                     </FormControl>
                     <FormDescription>
@@ -433,6 +494,41 @@ export function CertificationsSettings() {
           </Form>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this certification from your profile.
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleDeleteCertification();
+              }}
+              disabled={isDeleting}
+              className="bg-destructive  hover:bg-destructive/90"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -1,18 +1,18 @@
-export type PostType = {
-  id: string;
-  authorId: string;
-  authorName: string;
-  authorAvatar: string;
-  authorSpecialty: string;
+export interface Post {
+  _id: string;
+  doctorId: string;
+  doctorName: string;
+  doctorSpecialty: string;
+  doctorAvatar: string;
   content: string;
-  createdAt: Date;
-  updatedAt: Date;
-  status: "pending" | "approved" | "rejected";
+  image: string | null;
   likes: number;
-  likedByUser: boolean;
-  savedByUser: boolean;
-  comments: number;
-};
+  isLiked: boolean;
+  isFollowing: boolean;
+  isSaved: boolean;
+  createdAt: string;
+  status: "published" | "pending";
+}
 
 export type PostLikeType = {
   postId: string;
