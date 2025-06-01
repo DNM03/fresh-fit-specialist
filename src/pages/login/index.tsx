@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { authService } from "@/services";
+import { toast } from "sonner";
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -38,6 +39,7 @@ function LoginPage() {
       setIsLoading(true);
       const response = await authService.login(data.email, data.password);
       console.log("Login successful", response);
+      toast.success("Login successful");
       navigate("/");
     } catch (error: any) {
       if (error.response?.status === 401) {
@@ -48,6 +50,7 @@ function LoginPage() {
         setError("An error occurred. Please try again.");
       }
       console.error("Login error:", error);
+      toast.error("An error occurred. Please try again.");
     } finally {
       setIsLoading(false);
     }

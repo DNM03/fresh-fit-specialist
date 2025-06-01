@@ -5,13 +5,14 @@ import {
   Handshake,
   History,
   House,
+  LogOut,
   Settings,
 } from "lucide-react";
 import app_logo from "@/assets/images/freshfit_logo.png";
 
 import { useLocation, useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
 import { authService } from "@/services";
+import { toast } from "sonner";
 // import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 function LeftSidebar() {
@@ -54,6 +55,17 @@ function LeftSidebar() {
       path: "/settings",
     },
   ];
+  const handleLogout = async () => {
+    try {
+      await authService.logout();
+    } catch (error) {
+      console.error("Logout error:", error);
+      authService.clearAuth();
+    } finally {
+      toast.success("Logged out successfully");
+      navigate("/login");
+    }
+  };
   return (
     <div className="w-64 min-w-64 border-r h-screen flex flex-col items-center py-4 gap-y-4 sticky top-0">
       <img src={app_logo} alt="App logo" className="w-24" />
@@ -103,18 +115,13 @@ function LeftSidebar() {
           <p className="text-sm">Heart</p>
         </div>
       </div> */}
-      <div className="mt-auto w-full px-4">
-        <Button
-          type="button"
-          className="w-full border-red-500 bg-red-500 hover:bg-red-600 hover:text-white"
-          onClick={() => {
-            authService.logout();
-            navigate("/login");
-          }}
-        >
-          Logout
-        </Button>
-      </div>
+      <button
+        className="mt-auto mb-4 flex flex-row items-center gap-x-2 bg-red-600 w-48 justify-center mx-4 text-white p-[6px] rounded-md hover:bg-red-500"
+        onClick={handleLogout}
+      >
+        <LogOut size={18} />
+        Log out
+      </button>
     </div>
   );
 }

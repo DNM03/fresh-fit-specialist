@@ -14,6 +14,9 @@ import History from "@/pages/history";
 // import OverlayLoading from "@/components/overlay-loading/overlay-loading";
 // import { Suspense } from "react";
 import ProtectedRoute from "./protected-route";
+import ForgotPasswordPage from "@/pages/forgot-password.tsx";
+import ResetPasswordPage from "@/pages/forgot-password.tsx/reset-password";
+import VerifyOtpPage from "@/pages/forgot-password.tsx/verify-otp";
 
 // const withSuspense = (
 //   Component: React.LazyExoticComponent<React.ComponentType<any>>
@@ -95,6 +98,23 @@ const router = createBrowserRouter([
   {
     path: "/login",
     element: <LoginPage />,
+  },
+  {
+    path: "/forgot-password",
+    children: [
+      {
+        index: true,
+        element: <ForgotPasswordPage />,
+      },
+      {
+        path: "/forgot-password/reset-password",
+        element: <ResetPasswordPage />,
+      },
+      {
+        path: "/forgot-password/verify-otp",
+        element: <VerifyOtpPage />,
+      },
+    ],
   },
 ]);
 

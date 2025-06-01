@@ -276,6 +276,7 @@ const authService = {
   getAuthToken,
   getRefreshToken,
   emitTokenExpiredEvent,
+  clearAuth,
 };
 
 export default authService;

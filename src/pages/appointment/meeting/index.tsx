@@ -41,10 +41,16 @@ const VideoCallPage: React.FC = () => {
   );
   const [showChat, setShowChat] = useState<boolean>(false);
 
+  // Create a stable streamID when component mounts
+  const [localStreamID, setLocalStreamID] = useState<string>("");
+
   const appID: number = parseInt(import.meta.env.VITE_ZEGOCLOUD_APP_ID);
 
-  const userID: string = `doctor_john_doe`;
+  const userID: string = `expert1`;
   const userName: string = "Dr. Smith";
+
+  // Add a separate ref for the PiP video
+  const localPipVideoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     const zg = new ZegoExpressEngine(
@@ -52,52 +58,6 @@ const VideoCallPage: React.FC = () => {
       import.meta.env.VITE_ZEGOCLOUD_SERVER_URL
     );
     setZegoEngine(zg);
-
-    zg.on(
-      "roomStreamUpdate",
-      async (
-        _roomID: string,
-        updateType: "ADD" | "DELETE",
-        streamList: StreamInfo[]
-      ) => {
-        console.log("Stream update:", updateType, streamList);
-
-        if (updateType === "ADD") {
-          for (const stream of streamList) {
-            try {
-              const remoteStream = await zg.startPlayingStream(stream.streamID);
-              setRemoteStreams((prev) => ({
-                ...prev,
-                [stream.streamID]: remoteStream,
-              }));
-            } catch (error) {
-              console.error("Failed to play remote stream:", error);
-            }
-          }
-        } else if (updateType === "DELETE") {
-          for (const stream of streamList) {
-            zg.stopPlayingStream(stream.streamID);
-            setRemoteStreams((prev) => {
-              const updated = { ...prev };
-              delete updated[stream.streamID];
-              return updated;
-            });
-          }
-        }
-      }
-    );
-
-    zg.on(
-      "roomStateUpdate",
-      (
-        _roomID: string,
-        state: string,
-        errorCode: number,
-        _extendedData: any
-      ) => {
-        console.log("Room state update:", state, errorCode);
-      }
-    );
 
     return () => {
       if (localStream) {
@@ -116,13 +76,67 @@ const VideoCallPage: React.FC = () => {
       Object.values(remoteVideoRefs.current).forEach((el) => {
         if (el) el.srcObject = null;
       });
-
-      zg.off("roomStreamUpdate");
-      zg.off("roomStateUpdate");
     };
   }, []);
 
   useEffect(() => {
+    if (!zegoEngine) return;
+
+    const handleStreamUpdate = async (
+      _roomID: string,
+      updateType: "ADD" | "DELETE",
+      streamList: StreamInfo[]
+    ) => {
+      console.log("Stream update:", updateType, streamList);
+
+      if (updateType === "ADD") {
+        for (const stream of streamList) {
+          try {
+            // Don't subscribe to our own stream
+            if (stream.streamID === localStreamID) continue;
+
+            console.log("Playing remote stream:", stream.streamID);
+            const remoteStream = await zegoEngine.startPlayingStream(
+              stream.streamID
+            );
+
+            setRemoteStreams((prev) => ({
+              ...prev,
+              [stream.streamID]: remoteStream,
+            }));
+          } catch (error) {
+            console.error("Failed to play remote stream:", error);
+          }
+        }
+      } else if (updateType === "DELETE") {
+        for (const stream of streamList) {
+          console.log("Stopping remote stream:", stream.streamID);
+          zegoEngine.stopPlayingStream(stream.streamID);
+
+          setRemoteStreams((prev) => {
+            const updated = { ...prev };
+            delete updated[stream.streamID];
+            return updated;
+          });
+        }
+      }
+    };
+
+    zegoEngine.on("roomStreamUpdate", handleStreamUpdate);
+
+    return () => {
+      zegoEngine.off("roomStreamUpdate", handleStreamUpdate);
+    };
+  }, [zegoEngine, localStreamID]);
+
+  useEffect(() => {
+    console.log("Remote streams updated:", remoteStreams);
+    console.log("pip video ref:", localPipVideoRef.current);
+    console.log("local video ref:", localVideoRef.current);
+    Object.values(remoteVideoRefs.current).forEach((el) => {
+      if (el) el.srcObject = null;
+    });
+
     Object.entries(remoteStreams).forEach(([streamID, stream]) => {
       const videoElement = remoteVideoRefs.current[streamID];
       if (videoElement && stream) {
@@ -144,11 +158,23 @@ const VideoCallPage: React.FC = () => {
   //     });
   //   };
 
+  // Add this at component level and update it when room changes
+  useEffect(() => {
+    if (roomID && userID) {
+      const newStreamID = `${roomID}_${userID}_${Date.now()}`;
+      setLocalStreamID(newStreamID);
+      console.log("Setting local stream ID:", newStreamID);
+    }
+  }, [roomID, userID]);
+
   const startCall = async (): Promise<void> => {
     if (!zegoEngine || !roomID.trim()) return;
-
     try {
       setIsLoading(true);
+
+      // Generate a consistent stream ID first
+      const newStreamID = `${roomID}_${userID}_${Date.now()}`;
+      setLocalStreamID(newStreamID);
 
       // This is a placeholder token. In a real application, you should fetch this from your backend.
       const token = import.meta.env.VITE_ZEGOCLOUD_TEMP_TOKEN;
@@ -156,20 +182,35 @@ const VideoCallPage: React.FC = () => {
       await zegoEngine.loginRoom(roomID, token, { userID, userName });
       setIsInRoom(true);
 
+      console.log("Creating local stream");
       const stream = await zegoEngine.createStream({
         camera: {
           audio: true,
           video: true,
         },
       });
+
+      // Set the stream to state
       setLocalStream(stream);
 
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream;
-      }
+      // Wait briefly for React to update refs before setting srcObject
+      setTimeout(() => {
+        // Double-check refs exist and set stream
+        if (localVideoRef.current) {
+          console.log("Setting main video ref");
+          localVideoRef.current.srcObject = stream;
+        }
 
-      const streamID = `${roomID}_${userID}_${Date.now()}`;
-      zegoEngine.startPublishingStream(streamID, stream);
+        if (localPipVideoRef.current) {
+          console.log("Setting PIP video ref");
+          localPipVideoRef.current.srcObject = stream;
+        }
+      }, 100);
+
+      // Use the same streamID we just set
+      console.log("Publishing with stream ID:", newStreamID);
+      await zegoEngine.startPublishingStream(newStreamID, stream);
+      console.log("Stream published successfully");
 
       setIsLoading(false);
     } catch (error) {
@@ -181,9 +222,11 @@ const VideoCallPage: React.FC = () => {
   const endCall = async (): Promise<void> => {
     if (!zegoEngine || !isInRoom) return;
 
+    console.log("end call", localStream, remoteStreams);
+
     try {
       if (localStream) {
-        zegoEngine.stopPublishingStream(`${roomID}_${userID}_${Date.now()}`);
+        zegoEngine.stopPublishingStream(localStreamID);
         zegoEngine.destroyStream(localStream);
         setLocalStream(null);
       }
@@ -231,45 +274,47 @@ const VideoCallPage: React.FC = () => {
     const remoteStreamArray = Object.entries(remoteStreams);
     const hasRemoteStreams = remoteStreamArray.length > 0;
 
-    if (!hasRemoteStreams) {
-      return (
-        <div className="flex items-center justify-center flex-1 ">
-          <div className="relative w-3/4 h-3/4 max-w-4xl">
-            <video
-              ref={localVideoRef}
-              autoPlay
-              playsInline
-              muted
-              className="w-full h-full object-cover rounded-lg"
-            />
-            <div className="absolute bottom-4 left-4 bg-black/50 text-white px-3 py-1 rounded text-sm flex items-center gap-2">
-              {!isMicOn && <MicOff size={16} className="text-red-500" />}
-              <span>You (Doctor)</span>
-            </div>
-          </div>
-        </div>
-      );
-    } else {
-      return (
-        <div className="flex flex-1">
-          <div className="relative flex-1">
-            {remoteStreamArray.map(([streamID, _stream], _idx) => (
-              <div key={streamID} className="h-full w-full relative">
+    // Debug logs
+    console.log("Rendering layout", {
+      hasRemoteStreams,
+      localStream,
+      localPipRef: !!localPipVideoRef.current,
+    });
+
+    return (
+      <div className="flex flex-1">
+        {/* Main video area */}
+        <div className="relative flex-1">
+          {hasRemoteStreams ? (
+            // Remote streams exist - show them as main
+            remoteStreamArray.map(([streamID, _stream]) => (
+              <div
+                key={streamID}
+                className="h-[calc(100vh-6rem)] w-full relative"
+              >
                 <video
                   ref={(el) => {
-                    remoteVideoRefs.current[streamID] = el;
+                    if (el) {
+                      remoteVideoRefs.current[streamID] = el;
+                      // Immediately set the srcObject if we have the stream
+                      const remoteStream = remoteStreams[streamID];
+                      if (remoteStream) {
+                        el.srcObject = remoteStream;
+                      }
+                    }
                   }}
                   autoPlay
                   playsInline
                   className="w-full h-full object-cover"
                 />
-                <div className="absolute bottom-4 left-4  text-white px-3 py-1 rounded text-sm flex items-center gap-2">
+                <div className="absolute bottom-4 left-4 bg-black/50 text-white px-3 py-1 rounded text-sm">
                   <span>Patient</span>
                 </div>
               </div>
-            ))}
-
-            <div className="absolute top-4 right-4 w-64 h-40 shadow-lg rounded-lg overflow-hidden border-2 border-white/20">
+            ))
+          ) : (
+            // No remote streams - show local stream as main
+            <div className="h-[calc(100vh-6rem)] w-full relative">
               <video
                 ref={localVideoRef}
                 autoPlay
@@ -277,28 +322,41 @@ const VideoCallPage: React.FC = () => {
                 muted
                 className="w-full h-full object-cover"
               />
-              <div className="absolute bottom-2 left-2 bg-black/50 text-white px-2 py-1 rounded text-xs flex items-center gap-1">
-                {!isMicOn && <MicOff size={12} className="text-red-500" />}
-                <span>You</span>
-              </div>
-            </div>
-          </div>
-
-          {showChat && (
-            <div className="w-80 bg-slate-800 border-l border-slate-700 flex flex-col">
-              <div className="p-3 border-b border-slate-700 font-medium text-slate-200">
-                Chat
-              </div>
-              <div className="flex-1 p-4 overflow-y-auto">
-                <div className="text-slate-400 text-sm italic text-center">
-                  No messages yet
-                </div>
+              <div className="absolute bottom-4 left-4 bg-black/50 text-white px-3 py-1 rounded text-sm">
+                {!isMicOn && <MicOff size={16} className="text-red-500" />}
+                <span>You (Doctor)</span>
               </div>
             </div>
           )}
+
+          {/* Always render the PIP but conditionally set visibility */}
+          <div
+            className={`absolute top-4 right-4 w-64 h-40 shadow-lg rounded-lg overflow-hidden border-2 border-white/20 ${
+              hasRemoteStreams && localStream ? "block" : "hidden"
+            }`}
+          >
+            <video
+              ref={localPipVideoRef}
+              autoPlay
+              playsInline
+              muted
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute bottom-2 left-2 bg-black/50 text-white px-2 py-1 rounded text-xs">
+              {!isMicOn && <MicOff size={12} className="text-red-500" />}
+              <span>You</span>
+            </div>
+          </div>
         </div>
-      );
-    }
+
+        {/* Chat sidebar */}
+        {showChat && (
+          <div className="w-80 bg-slate-800 border-l border-slate-700 flex flex-col">
+            {/* Chat content */}
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
