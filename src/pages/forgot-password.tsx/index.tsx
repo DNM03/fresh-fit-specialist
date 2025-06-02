@@ -35,7 +35,12 @@ function ForgotPasswordPage() {
     setLoading(true);
     try {
       await authService.forgotPassword(data.email);
-      toast.success("Password reset email sent. Please check your inbox.");
+      toast.success("Password reset email sent. Please check your inbox.", {
+        style: {
+          background: "#3ac76b",
+          color: "#fff",
+        },
+      });
       navigate("/forgot-password/verify-otp", { state: { email: data.email } });
     } catch (error: any) {
       if (error.response?.status === 404) {
@@ -44,7 +49,12 @@ function ForgotPasswordPage() {
         setError("An error occurred. Please try again.");
       }
       console.error("Password reset request error:", error);
-      toast.error("Failed to send reset email.");
+      toast.error("Failed to send reset email.", {
+        style: {
+          background: "#cc3131",
+          color: "#fff",
+        },
+      });
     } finally {
       setLoading(false);
     }

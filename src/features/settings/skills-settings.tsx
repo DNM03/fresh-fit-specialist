@@ -57,7 +57,12 @@ export function SkillsSettings() {
         }
       } catch (error) {
         console.error("Error fetching skills:", error);
-        toast.error("Failed to load skills data");
+        toast.error("Failed to load skills data", {
+          style: {
+            background: "#cc3131",
+            color: "#fff",
+          },
+        });
       } finally {
         setIsFetching(false);
       }
@@ -82,12 +87,22 @@ export function SkillsSettings() {
       },
     ]);
 
-    toast.success(`${skill.name} has been added to your skills`);
+    toast.success(`${skill.name} has been added to your skills`, {
+      style: {
+        background: "#3ac76b",
+        color: "#fff",
+      },
+    });
   };
 
   const handleRemoveSkill = (skillId: string) => {
     setExpertSkills(expertSkills.filter((skill) => skill.id !== skillId));
-    toast.success("Skill removed");
+    toast.success("Skill removed", {
+      style: {
+        background: "#3ac76b",
+        color: "#fff",
+      },
+    });
   };
 
   const handleToggleMainSkill = (skillId: string) => {
@@ -118,13 +133,23 @@ export function SkillsSettings() {
       );
 
       if (response.status === 200) {
-        toast.success("Your skills have been updated successfully");
+        toast.success("Your skills have been updated successfully", {
+          style: {
+            background: "#3ac76b",
+            color: "#fff",
+          },
+        });
       } else {
         throw new Error("Failed to update skills");
       }
     } catch (error) {
       console.error("Error updating skills:", error);
-      toast.error("Failed to update skills");
+      toast.error("Failed to update skills", {
+        style: {
+          background: "#cc3131",
+          color: "#fff",
+        },
+      });
     } finally {
       setIsSubmitting(false);
     }

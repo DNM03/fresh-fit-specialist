@@ -1,9 +1,16 @@
-import * as React from "react"
-import { ChevronLeft, ChevronRight } from "lucide-react"
-import { DayPicker } from "react-day-picker"
+import * as React from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { DayPicker } from "react-day-picker";
 
-import { cn } from "@/lib/utils"
-import { buttonVariants } from "@/components/ui/button"
+import { cn } from "@/lib/utils";
+import { buttonVariants } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 function Calendar({
   className,
@@ -11,8 +18,24 @@ function Calendar({
   showOutsideDays = true,
   ...props
 }: React.ComponentProps<typeof DayPicker>) {
+  const [month, setMonth] = React.useState<Date>(props.month || new Date());
+
+  // Update month when props.month changes
+  React.useEffect(() => {
+    if (props.month) {
+      setMonth(props.month);
+    }
+  }, [props.month]);
+
+  const handleMonthChange = (newMonth: Date) => {
+    setMonth(newMonth);
+    props.onMonthChange?.(newMonth);
+  };
+
   return (
     <DayPicker
+      month={month}
+      onMonthChange={handleMonthChange}
       showOutsideDays={showOutsideDays}
       className={cn("p-3", className)}
       classNames={{
@@ -27,20 +50,20 @@ function Calendar({
         ),
         nav_button_previous: "absolute left-1",
         nav_button_next: "absolute right-1",
-        table: "w-full border-collapse space-x-1",
+        table: "w-full border-collapse",
         head_row: "flex",
         head_cell:
-          "text-muted-foreground rounded-md w-8 font-normal text-[0.8rem]",
+          "text-muted-foreground rounded-md flex-1 font-normal text-[0.8rem]",
         row: "flex w-full mt-2",
         cell: cn(
-          "relative p-0 text-center text-sm focus-within:relative focus-within:z-20 [&:has([aria-selected])]:bg-accent [&:has([aria-selected].day-range-end)]:rounded-r-md",
+          "relative p-0 text-center text-sm focus-within:relative focus-within:z-20 [&:has([aria-selected])]:bg-accent [&:has([aria-selected].day-range-end)]:rounded-r-md flex-1",
           props.mode === "range"
             ? "[&:has(>.day-range-end)]:rounded-r-md [&:has(>.day-range-start)]:rounded-l-md first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md"
             : "[&:has([aria-selected])]:rounded-md"
         ),
         day: cn(
           buttonVariants({ variant: "ghost" }),
-          "size-8 p-0 font-normal aria-selected:opacity-100"
+          "w-full h-9 p-0 font-normal aria-selected:opacity-100"
         ),
         day_range_start:
           "day-range-start aria-selected:bg-primary aria-selected:text-primary-foreground",
@@ -64,10 +87,112 @@ function Calendar({
         IconRight: ({ className, ...props }) => (
           <ChevronRight className={cn("size-4", className)} {...props} />
         ),
+        Caption: ({ displayMonth }) => {
+          const currentYear = displayMonth.getFullYear();
+          const currentMonth = displayMonth.getMonth();
+
+          // Generate year options (current year ± 10 years)
+          const yearOptions = Array.from(
+            { length: 21 },
+            (_, i) => currentYear - 10 + i
+          );
+
+          // Month names
+          const monthNames = [
+            "January",
+            "February",
+            "March",
+            "April",
+            "May",
+            "June",
+            "July",
+            "August",
+            "September",
+            "October",
+            "November",
+            "December",
+          ];
+
+          return (
+            <div className="flex justify-center items-center gap-2 relative w-full px-10">
+              {/* Navigation buttons - left */}
+              <button
+                className={cn(
+                  buttonVariants({ variant: "outline" }),
+                  "size-8 bg-transparent p-0 opacity-50 hover:opacity-100 absolute left-0"
+                )}
+                onClick={() => {
+                  const newDate = new Date(displayMonth);
+                  newDate.setMonth(newDate.getMonth() - 1);
+                  handleMonthChange(newDate);
+                }}
+              >
+                <ChevronLeft className="size-4" />
+              </button>
+
+              {/* Month Selector */}
+              <Select
+                value={currentMonth.toString()}
+                onValueChange={(value) => {
+                  const newDate = new Date(displayMonth);
+                  newDate.setMonth(parseInt(value));
+                  handleMonthChange(newDate);
+                }}
+              >
+                <SelectTrigger className="w-[130px] h-9 text-sm">
+                  <SelectValue placeholder={monthNames[currentMonth]} />
+                </SelectTrigger>
+                <SelectContent>
+                  {monthNames.map((monthName, index) => (
+                    <SelectItem key={index} value={index.toString()}>
+                      {monthName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* Year Selector */}
+              <Select
+                value={currentYear.toString()}
+                onValueChange={(value) => {
+                  const newDate = new Date(displayMonth);
+                  newDate.setFullYear(parseInt(value));
+                  handleMonthChange(newDate);
+                }}
+              >
+                <SelectTrigger className="w-[90px] h-9 text-sm">
+                  <SelectValue placeholder={currentYear.toString()} />
+                </SelectTrigger>
+                <SelectContent>
+                  {yearOptions.map((year) => (
+                    <SelectItem key={year} value={year.toString()}>
+                      {year}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* Navigation buttons - right */}
+              <button
+                className={cn(
+                  buttonVariants({ variant: "outline" }),
+                  "size-8 bg-transparent p-0 opacity-50 hover:opacity-100 absolute right-0"
+                )}
+                onClick={() => {
+                  const newDate = new Date(displayMonth);
+                  newDate.setMonth(newDate.getMonth() + 1);
+                  handleMonthChange(newDate);
+                }}
+              >
+                <ChevronRight className="size-4" />
+              </button>
+            </div>
+          );
+        },
       }}
       {...props}
     />
-  )
+  );
 }
 
-export { Calendar }
+export { Calendar };

@@ -3,7 +3,6 @@ import { AxiosResponse } from "axios";
 import {
   User,
   UserSettings,
-  ProfileUpdateData,
   PasswordChangeData,
   HealthActivityType,
   AddWaterData,
@@ -15,8 +14,8 @@ class UserService {
     return apiService.get<any>("/users/me");
   }
 
-  updateProfile(userData: ProfileUpdateData): Promise<AxiosResponse<User>> {
-    return apiService.put<User>("/users/me", userData);
+  updateProfile(userData: any): Promise<AxiosResponse<User>> {
+    return apiService.patch<User>("/users/me", userData);
   }
 
   changePassword({

@@ -140,7 +140,12 @@ export function EducationSettings() {
         }
       } catch (error) {
         console.error("Error fetching education data:", error);
-        toast.error("Failed to load education data");
+        toast.error("Failed to load education data", {
+          style: {
+            background: "#cc3131",
+            color: "#fff",
+          },
+        });
       } finally {
         setIsFetching(false);
       }
@@ -189,14 +194,24 @@ export function EducationSettings() {
       });
 
       setEducation(education.filter((edu) => edu.id !== deletingEduId));
-      toast.success("The education entry has been removed from your profile");
+      toast.success("The education entry has been removed from your profile", {
+        style: {
+          background: "#3ac76b",
+          color: "#fff",
+        },
+      });
 
       // Close the dialog
       setIsDeleteDialogOpen(false);
       setDeletingEduId(null);
     } catch (error) {
       console.error("Error deleting education:", error);
-      toast.error("Failed to delete education entry");
+      toast.error("Failed to delete education entry", {
+        style: {
+          background: "#cc3131",
+          color: "#fff",
+        },
+      });
     } finally {
       setIsDeleting(false);
     }
@@ -237,7 +252,12 @@ export function EducationSettings() {
                 : edu
             )
           );
-          toast.success("The education entry has been updated successfully");
+          toast.success("The education entry has been updated successfully", {
+            style: {
+              background: "#3ac76b",
+              color: "#fff",
+            },
+          });
         }
       } else {
         // Add new education
@@ -249,14 +269,24 @@ export function EducationSettings() {
         if (response.status === 201 || response.status === 200) {
           // Add new education to local state
           setEducation([...education, response.data.data.education]);
-          toast.success("The education entry has been added to your profile");
+          toast.success("The education entry has been added to your profile", {
+            style: {
+              background: "#3ac76b",
+              color: "#fff",
+            },
+          });
         }
       }
 
       setIsDialogOpen(false);
     } catch (error) {
       console.error("Error saving education:", error);
-      toast.error("Failed to save education entry");
+      toast.error("Failed to save education entry", {
+        style: {
+          background: "#cc3131",
+          color: "#fff",
+        },
+      });
     } finally {
       setIsLoading(false);
     }
@@ -431,7 +461,7 @@ export function EducationSettings() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
                 <FormField
                   control={form.control}
                   name="startYear"

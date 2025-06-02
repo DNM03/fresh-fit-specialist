@@ -9,6 +9,7 @@ import { useNavigate, useLocation, Link } from "react-router-dom";
 import { toast } from "sonner";
 import bg_image from "@/assets/images/doctor-bg.jpg";
 import app_logo from "@/assets/images/freshfit_logo.png";
+import { Eye, EyeOff } from "lucide-react"; // Import eye icons
 
 const schema = z
   .object({
@@ -31,11 +32,22 @@ function ResetPasswordPage() {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Add state for password visibility toggles
+  const [showNewPassword, setShowNewPassword] = useState<boolean>(false);
+  const [showConfirmPassword, setShowConfirmPassword] =
+    useState<boolean>(false);
+
   useEffect(() => {
     if (!forgot_password_token) {
       navigate("/forgot-password");
       toast.error(
-        "Please follow the password reset process from the beginning"
+        "Please follow the password reset process from the beginning",
+        {
+          style: {
+            background: "#cc3131",
+            color: "#fff",
+          },
+        }
       );
     }
   }, [forgot_password_token, navigate]);
@@ -57,12 +69,22 @@ function ResetPasswordPage() {
         password: data.newPassword,
         confirm_password: data.newPassword,
       });
-      toast.success("Password reset successful!");
+      toast.success("Password reset successful!", {
+        style: {
+          background: "#3ac76b",
+          color: "#fff",
+        },
+      });
       navigate("/login");
     } catch (error: any) {
       setError("An error occurred. Please try again.");
       console.error("Reset password error:", error);
-      toast.error("An error occurred. Please try again.");
+      toast.error("An error occurred. Please try again.", {
+        style: {
+          background: "#cc3131",
+          color: "#fff",
+        },
+      });
     } finally {
       setLoading(false);
     }
@@ -85,24 +107,56 @@ function ResetPasswordPage() {
           </p>
 
           <div className="flex flex-col gap-y-1 w-full">
-            <Input
-              type="password"
-              placeholder="New Password"
-              {...register("newPassword")}
-              className="text-slate-900 rounded-md min-w-72"
-            />
+            <div className="relative">
+              <Input
+                type={showNewPassword ? "text" : "password"}
+                placeholder="New Password"
+                {...register("newPassword")}
+                className="text-slate-900 rounded-md pr-10 min-w-72"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                onClick={() => setShowNewPassword(!showNewPassword)}
+                tabIndex={-1}
+              >
+                {showNewPassword ? (
+                  <EyeOff className="h-4 w-4 text-slate-500" />
+                ) : (
+                  <Eye className="h-4 w-4 text-slate-500" />
+                )}
+              </Button>
+            </div>
             {errors.newPassword && (
               <p className="text-red-500">{errors.newPassword.message}</p>
             )}
           </div>
 
           <div className="flex flex-col gap-y-1 w-full">
-            <Input
-              type="password"
-              placeholder="Confirm Password"
-              {...register("confirmPassword")}
-              className="text-slate-900 rounded-md"
-            />
+            <div className="relative">
+              <Input
+                type={showConfirmPassword ? "text" : "password"}
+                placeholder="Confirm Password"
+                {...register("confirmPassword")}
+                className="text-slate-900 rounded-md pr-10"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                tabIndex={-1}
+              >
+                {showConfirmPassword ? (
+                  <EyeOff className="h-4 w-4 text-slate-500" />
+                ) : (
+                  <Eye className="h-4 w-4 text-slate-500" />
+                )}
+              </Button>
+            </div>
             {errors.confirmPassword && (
               <p className="text-red-500">{errors.confirmPassword.message}</p>
             )}

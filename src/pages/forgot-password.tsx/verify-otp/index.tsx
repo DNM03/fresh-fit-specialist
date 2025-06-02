@@ -28,7 +28,12 @@ function VerifyOtpPage() {
   useEffect(() => {
     if (!email) {
       navigate("/forgot-password");
-      toast.error("Please enter your email first");
+      toast.error("Please enter your email first", {
+        style: {
+          background: "#cc3131",
+          color: "#fff",
+        },
+      });
     }
   }, [email, navigate]);
 
@@ -51,13 +56,23 @@ function VerifyOtpPage() {
         email,
         otp_code: data.otp,
       });
-      toast.success("OTP verified successfully!");
+      toast.success("OTP verified successfully!", {
+        style: {
+          background: "#3ac76b",
+          color: "#fff",
+        },
+      });
       navigate("/forgot-password/reset-password", {
         state: { forgot_password_token: response.data.forgot_password_token },
       });
     } catch (error: any) {
       setError("Invalid OTP. Please try again.");
-      toast.error("Invalid OTP. Please try again.");
+      toast.error("Invalid OTP. Please try again.", {
+        style: {
+          background: "#cc3131",
+          color: "#fff",
+        },
+      });
     } finally {
       setLoading(false);
     }
@@ -67,9 +82,19 @@ function VerifyOtpPage() {
     setLoading(true);
     try {
       await authService.forgotPassword(email);
-      toast.success("New OTP sent to your email!");
+      toast.success("New OTP sent to your email!", {
+        style: {
+          background: "#3ac76b",
+          color: "#fff",
+        },
+      });
     } catch (error) {
-      toast.error("Failed to resend OTP");
+      toast.error("Failed to resend OTP", {
+        style: {
+          background: "#cc3131",
+          color: "#fff",
+        },
+      });
     } finally {
       setLoading(false);
     }

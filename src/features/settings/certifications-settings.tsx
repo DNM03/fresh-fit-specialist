@@ -109,7 +109,12 @@ export function CertificationsSettings() {
         }
       } catch (error) {
         console.error("Error fetching certifications:", error);
-        toast.error("Failed to load certifications");
+        toast.error("Failed to load certifications", {
+          style: {
+            background: "#cc3131",
+            color: "#fff",
+          },
+        });
       } finally {
         setIsFetching(false);
       }
@@ -162,13 +167,23 @@ export function CertificationsSettings() {
       setCertifications(
         certifications.filter((cert) => cert.id !== deletingCertId)
       );
-      toast.success("Certification has been deleted successfully");
+      toast.success("Certification has been deleted successfully", {
+        style: {
+          background: "#3ac76b",
+          color: "#fff",
+        },
+      });
 
       setIsDeleteDialogOpen(false);
       setDeletingCertId(null);
     } catch (error) {
       console.error("Error deleting certification:", error);
-      toast.error("Failed to delete certification");
+      toast.error("Failed to delete certification", {
+        style: {
+          background: "#cc3131",
+          color: "#fff",
+        },
+      });
     } finally {
       setIsDeleting(false);
     }
@@ -207,7 +222,12 @@ export function CertificationsSettings() {
                 : cert
             )
           );
-          toast.success("Certification updated successfully");
+          toast.success("Certification updated successfully", {
+            style: {
+              background: "#3ac76b",
+              color: "#fff",
+            },
+          });
         }
       } else {
         response = await specialistService.addCertification(
@@ -220,14 +240,24 @@ export function CertificationsSettings() {
             ...certifications,
             response.data.data.certification,
           ]);
-          toast.success("Certification added successfully");
+          toast.success("Certification added successfully", {
+            style: {
+              background: "#3ac76b",
+              color: "#fff",
+            },
+          });
         }
       }
 
       setIsDialogOpen(false);
     } catch (error) {
       console.error("Error saving certification:", error);
-      toast.error("Failed to save certification");
+      toast.error("Failed to save certification", {
+        style: {
+          background: "#cc3131",
+          color: "#fff",
+        },
+      });
     } finally {
       setIsLoading(false);
     }
