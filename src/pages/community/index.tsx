@@ -5,6 +5,7 @@ import { CreatePostForm } from "@/features/community/create-post-form";
 import { PostCard } from "@/features/community/post-card";
 import postService from "@/services/post.service";
 import { userService } from "@/services";
+import { ArrowUp } from "lucide-react";
 
 export default function CommunityPage() {
   const [posts, setPosts] = useState<any[]>([]);
@@ -177,6 +178,9 @@ export default function CommunityPage() {
       console.error("Error deleting post:", error);
     }
   };
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   return (
     <div className="container py-6 px-4">
@@ -216,6 +220,12 @@ export default function CommunityPage() {
             : "No posts found."}
         </div>
       )}
+      <button
+        onClick={scrollToTop}
+        className="fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded-full shadow-lg hover:bg-green-600"
+      >
+        <ArrowUp className="h-8 w-8" />
+      </button>
     </div>
   );
 }
