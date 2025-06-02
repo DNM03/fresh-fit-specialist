@@ -14,6 +14,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import postService from "@/services/post.service";
+import ImageDropzone, { ImageFile } from "@/components/ui/image-dropzone";
+import { ImageIcon } from "lucide-react";
+import mediaService from "@/services/media.service";
 
 interface CreatePostFormProps {
   onPostCreated?: () => void;
@@ -27,12 +30,13 @@ export function CreatePostForm({
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [image, setImage] = useState<ImageFile[]>([]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!content.trim()) {
-      toast("Error", {
+      toast.error("Error", {
         description: "Post content cannot be empty",
       });
       return;
@@ -41,29 +45,38 @@ export function CreatePostForm({
     setIsSubmitting(true);
 
     try {
+      let imageRes;
+      if (image[0].file) {
+        imageRes = await mediaService.backupUploadImage(image[0].file);
+        if (!imageRes) {
+          throw new Error("Image upload failed");
+        }
+      }
+
       await postService.createPost({
         title: title.trim(),
         content: content.trim(),
         type: "Expert_Post",
         user_id: currentUser?._id || "",
-        medias: [""],
+        medias: imageRes?.result?.url ? [imageRes.result.url] : [""],
         mediaType: "Image",
         tags: ["Other"],
       });
 
-      toast("Success", {
+      toast.success("Success", {
         description: "Your post has been submitted for review",
       });
 
       setTitle("");
       setContent("");
+      setImage([]);
 
       if (onPostCreated) {
         onPostCreated();
       }
     } catch (error) {
       console.error("Error creating post:", error);
-      toast("Error", {
+      toast.error("Error", {
         description: "Failed to create post. Please try again.",
       });
     } finally {
@@ -99,6 +112,17 @@ export function CreatePostForm({
               value={content}
               onChange={(e) => setContent(e.target.value)}
               required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Post Image</Label>
+            <ImageDropzone
+              maxImages={1}
+              maxSizeInMB={20}
+              onImagesChange={(value) => {
+                setImage(value);
+              }}
+              icon={<ImageIcon className="h-16 w-16 text-gray-300 mb-4" />}
             />
           </div>
         </CardContent>
