@@ -78,18 +78,32 @@ export default function AddAvailabilityPage() {
       const response = await specialistService.addAvailableSlot(
         availabilityData
       );
-      if (!response.data.success) {
-        toast.error(response.data.message || "Failed to save availability");
+      if (response.status !== 200) {
+        toast.error(response.data.message || "Failed to save availability", {
+          style: {
+            background: "#cc3131",
+            color: "#fff",
+          },
+        });
         return;
       }
 
       toast.success("", {
         description: "Availability has been saved successfully",
+        style: {
+          background: "#3ac76b",
+          color: "#fff",
+        },
       });
       navigate("/availability");
     } catch (error) {
       console.error("Error saving availability:", error);
-      toast.error("An error occurred while saving availability");
+      toast.error("An error occurred while saving availability", {
+        style: {
+          background: "#cc3131",
+          color: "#fff",
+        },
+      });
     } finally {
       setIsLoading(false);
     }

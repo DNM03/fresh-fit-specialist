@@ -36,12 +36,21 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2, Upload, Check, ChevronsUpDown, X } from "lucide-react";
+import {
+  Loader2,
+  Upload,
+  Check,
+  ChevronsUpDown,
+  X,
+  CalendarIcon,
+} from "lucide-react";
 import specialistService from "@/services/specialist.service";
 import { userService } from "@/services";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import mediaService from "@/services/media.service";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
 
 const availableLanguages = [
   { label: "English", value: "English" },
@@ -78,6 +87,11 @@ const profileFormSchema = z.object({
   fullName: z.string().min(2, {
     message: "Name must be at least 2 characters.",
   }),
+  dateOfBirth: z.date({ required_error: "Please select a date of birth." }), // For date picker
+  phoneNumber: z.string().min(10, {
+    message: "Phone number must be at least 10 characters.",
+  }),
+  gender: z.enum(["Male", "Female", "Other"]),
   specialization: z.string().min(2, {
     message: "Specialization must be at least 2 characters.",
   }),
@@ -109,11 +123,15 @@ export function ProfileSettings() {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState("");
+  const [, setUserProfile] = useState<any>(null);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
       fullName: "",
+      dateOfBirth: new Date(),
+      phoneNumber: "",
+      gender: "Male" as "Male" | "Female" | "Other",
       specialization: "",
       experienceYears: 0,
       bio: "",
@@ -142,10 +160,16 @@ export function ProfileSettings() {
           const expertData = response.data.data.expertInfo;
 
           setInitialData(expertData);
+          setUserProfile(expertData.user);
 
           // Reset form with fetched values
           form.reset({
             fullName: expertData.fullName || "",
+            dateOfBirth: expertData.user.dateOfBirth
+              ? new Date(expertData.user.dateOfBirth)
+              : new Date(),
+            phoneNumber: expertData.user.phoneNumber || "",
+            gender: expertData.user.gender || "Male",
             specialization: expertData.specialization || "",
             experienceYears: expertData.experience_years || 0,
             bio: expertData.bio || "",
@@ -160,7 +184,12 @@ export function ProfileSettings() {
         }
       } catch (error) {
         console.error("Error fetching specialist profile:", error);
-        toast.error("Failed to load profile data");
+        toast.error("Failed to load profile data", {
+          style: {
+            background: "#cc3131",
+            color: "#fff",
+          },
+        });
       } finally {
         setIsLoading(false);
       }
@@ -174,13 +203,23 @@ export function ProfileSettings() {
       const file = event.target.files[0];
 
       if (file.size > 5 * 1024 * 1024) {
-        toast.error("Image file size should not exceed 5MB");
+        toast.error("Image file size should not exceed 5MB", {
+          style: {
+            background: "#cc3131",
+            color: "#fff",
+          },
+        });
         return;
       }
 
       // Check file type
       if (!file.type.startsWith("image/")) {
-        toast.error("Only image files are allowed");
+        toast.error("Only image files are allowed", {
+          style: {
+            background: "#cc3131",
+            color: "#fff",
+          },
+        });
         return;
       }
 
@@ -205,6 +244,9 @@ export function ProfileSettings() {
       // Prepare the data for API call
       const updateData: any = {
         fullName: data.fullName,
+        // dateOfBirth: data.dateOfBirth,
+        // phoneNumber: data.phoneNumber,
+        // gender: data.gender,
         specialization: data.specialization,
         experience_years: data.experienceYears,
         bio: data.bio,
@@ -217,22 +259,38 @@ export function ProfileSettings() {
         imageRes = await mediaService.backupUploadImage(avatarFile);
       }
 
+      const responseUser = await userService.updateProfile({
+        date_of_birth: data.dateOfBirth.toISOString(),
+        phoneNumber: data.phoneNumber,
+        avatar: imageRes?.result?.url || initialData?.user?.avatar,
+        gender: data.gender,
+      });
+
       const response = await specialistService.updateGeneralInfo(
         initialData?.id,
         {
           ...updateData,
-          avatar: imageRes?.result?.url || initialData?.user?.avatar,
         }
       );
 
-      if (response.status === 200) {
-        toast.success("Profile updated successfully");
+      if (response.status === 200 && responseUser.status === 200) {
+        toast.success("Profile updated successfully", {
+          style: {
+            background: "#3ac76b",
+            color: "#fff",
+          },
+        });
       } else {
         throw new Error("Failed to update profile");
       }
     } catch (error) {
       console.error("Error updating profile:", error);
-      toast.error("Failed to update profile");
+      toast.error("Failed to update profile", {
+        style: {
+          background: "#cc3131",
+          color: "#fff",
+        },
+      });
     } finally {
       setIsLoading(false);
     }
@@ -278,7 +336,9 @@ export function ProfileSettings() {
         <div className="flex-1 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email" className="mb-2">
+                Email
+              </Label>
               <Input id="email" value={userEmail} disabled />
               <p className="text-xs text-muted-foreground mt-1">
                 Email cannot be changed
@@ -315,32 +375,115 @@ export function ProfileSettings() {
 
               <FormField
                 control={form.control}
-                name="specialization"
+                name="phoneNumber"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Specialization</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a specialization" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {specializations.map((spec) => (
-                          <SelectItem key={spec.value} value={spec.value}>
-                            {spec.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormDescription>
-                      Your primary professional specialization
-                    </FormDescription>
+                    <FormLabel>Phone Number</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="+84 123 456 789" />
+                    </FormControl>
+                    <FormDescription>Your contact phone number</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
             </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <FormField
+                control={form.control}
+                name="dateOfBirth"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Date of Birth</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant={"outline"}
+                            className={cn(
+                              "w-full pl-3 text-left font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            {field.value ? (
+                              format(field.value, "PPP")
+                            ) : (
+                              <span>Pick a date</span>
+                            )}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.value}
+                          onSelect={field.onChange}
+                          disabled={(date) =>
+                            date > new Date() || date < new Date("1900-01-01")
+                          }
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="gender"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Gender</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select gender" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="Male">Male</SelectItem>
+                        <SelectItem value="Female">Female</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>Your gender</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="specialization"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Specialization</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger className="w-1/2">
+                        <SelectValue placeholder="Select a specialization" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {specializations.map((spec) => (
+                        <SelectItem key={spec.value} value={spec.value}>
+                          {spec.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>
+                    Your primary professional specialization
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={form.control}

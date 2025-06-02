@@ -62,7 +62,12 @@ function LeftSidebar() {
       console.error("Logout error:", error);
       authService.clearAuth();
     } finally {
-      toast.success("Logged out successfully");
+      toast.success("Logged out successfully", {
+        style: {
+          background: "#3ac76b",
+          color: "#fff",
+        },
+      });
       navigate("/login");
     }
   };

@@ -38,6 +38,10 @@ export function CreatePostForm({
     if (!content.trim()) {
       toast.error("Error", {
         description: "Post content cannot be empty",
+        style: {
+          background: "#cc3131",
+          color: "#fff",
+        },
       });
       return;
     }
@@ -65,6 +69,11 @@ export function CreatePostForm({
 
       toast.success("Success", {
         description: "Your post has been submitted for review",
+
+        style: {
+          background: "#3ac76b",
+          color: "#fff",
+        },
       });
 
       setTitle("");
@@ -78,6 +87,11 @@ export function CreatePostForm({
       console.error("Error creating post:", error);
       toast.error("Error", {
         description: "Failed to create post. Please try again.",
+
+        style: {
+          background: "#cc3131",
+          color: "#fff",
+        },
       });
     } finally {
       setIsSubmitting(false);

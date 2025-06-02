@@ -114,7 +114,12 @@ export function ExperienceSettings() {
         }
       } catch (error) {
         console.error("Error fetching experience data:", error);
-        toast.error("Failed to load experience data");
+        toast.error("Failed to load experience data", {
+          style: {
+            background: "#cc3131",
+            color: "#fff",
+          },
+        });
       } finally {
         setIsFetching(false);
       }
@@ -164,13 +169,23 @@ export function ExperienceSettings() {
       });
 
       setExperience(experience.filter((exp) => exp.id !== deletingExpId));
-      toast.success("The experience entry has been removed from your profile");
+      toast.success("The experience entry has been removed from your profile", {
+        style: {
+          background: "#3ac76b",
+          color: "#fff",
+        },
+      });
 
       setIsDeleteDialogOpen(false);
       setDeletingExpId(null);
     } catch (error) {
       console.error("Error deleting experience:", error);
-      toast.error("Failed to delete experience entry");
+      toast.error("Failed to delete experience entry", {
+        style: {
+          background: "#cc3131",
+          color: "#fff",
+        },
+      });
     } finally {
       setIsDeleting(false);
     }
@@ -211,7 +226,12 @@ export function ExperienceSettings() {
                 : exp
             )
           );
-          toast.success("The experience entry has been updated successfully");
+          toast.success("The experience entry has been updated successfully", {
+            style: {
+              background: "#3ac76b",
+              color: "#fff",
+            },
+          });
         }
       } else {
         response = await specialistService.addExperience(
@@ -222,14 +242,24 @@ export function ExperienceSettings() {
         if (response.status === 201 || response.status === 200) {
           // Add new experience to local state
           setExperience([...experience, response.data.data.experience]);
-          toast.success("The experience entry has been added to your profile");
+          toast.success("The experience entry has been added to your profile", {
+            style: {
+              background: "#3ac76b",
+              color: "#fff",
+            },
+          });
         }
       }
 
       setIsDialogOpen(false);
     } catch (error) {
       console.error("Error saving experience:", error);
-      toast.error("Failed to save experience entry");
+      toast.error("Failed to save experience entry", {
+        style: {
+          background: "#cc3131",
+          color: "#fff",
+        },
+      });
     } finally {
       setIsLoading(false);
     }
@@ -377,7 +407,7 @@ export function ExperienceSettings() {
                 )}
               />
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
                 <FormField
                   control={form.control}
                   name="startDate"

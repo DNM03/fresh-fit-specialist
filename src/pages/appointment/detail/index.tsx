@@ -10,6 +10,7 @@ import {
   Star,
   CheckCircle,
   XCircle,
+  CircleCheckBig,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,6 +36,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import specialistService from "@/services/specialist.service";
+import zegoService from "@/services/zego.service";
+import { userService } from "@/services";
 
 interface AppointmentDetail {
   id: string;
@@ -93,6 +96,8 @@ export default function AppointmentDetail() {
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [myProfile, setMyProfile] = useState<any>(null);
+  const [confirmEndSession, setConfirmEndSession] = useState(false);
 
   useEffect(() => {
     const fetchAppointmentDetails = async () => {
@@ -109,8 +114,23 @@ export default function AppointmentDetail() {
         setLoading(false);
       }
     };
+    const fetchMyProfile = async () => {
+      try {
+        const response = await userService.getCurrentUser();
+        setMyProfile(response.data.result);
+      } catch (error) {
+        console.error("Error fetching my profile:", error);
+        toast.error("Failed to load your profile. Please try again.", {
+          style: {
+            background: "#cc3131",
+            color: "#fff",
+          },
+        });
+      }
+    };
 
     fetchAppointmentDetails();
+    fetchMyProfile();
   }, [id]);
 
   const handleStartSession = async () => {
@@ -122,28 +142,62 @@ export default function AppointmentDetail() {
       //   } else {
       //     toast.error("Failed to generate meeting link");
       //   }
+      const response = await zegoService.createZegoToken();
+      if (response.data.token) {
+        navigate(`/appointments/meeting/${id}`, {
+          state: {
+            zgtoken: response.data.token,
+            userId: myProfile?._id,
+            name: myProfile?.fullName,
+          },
+        });
+      }
     } catch (error) {
       console.error("Error starting session:", error);
-      toast.error("Failed to start session");
+      toast.error("Failed to start session", {
+        style: {
+          background: "#cc3131",
+          color: "#fff",
+        },
+      });
     }
   };
 
   const handleEndSession = async () => {
     try {
-      //   await specialistService.completeAppointment(id!);
-      toast.success("Session completed successfully");
+      setIsSubmitting(true);
+      await specialistService.updateAppointmentStatus(id!, "COMPLETED");
+      toast.success("Session completed successfully", {
+        style: {
+          background: "#3ac76b",
+          color: "#fff",
+        },
+      });
       // Refresh appointment data
       const response = await specialistService.getAppointmentById(id!);
-      setAppointment(response.data.appointment.appointment);
+      setAppointment(response.data.data.appointment.appointment);
+      setConfirmEndSession(false);
     } catch (error) {
       console.error("Error ending session:", error);
-      toast.error("Failed to end session");
+      toast.error("Failed to end session", {
+        style: {
+          background: "#cc3131",
+          color: "#fff",
+        },
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleCancelAppointment = async () => {
     if (!cancelReason.trim()) {
-      toast.error("Please provide a cancellation reason");
+      toast.error("Please provide a cancellation reason", {
+        style: {
+          background: "#cc3131",
+          color: "#fff",
+        },
+      });
       return;
     }
 
@@ -153,7 +207,12 @@ export default function AppointmentDetail() {
         cancellationReason: cancelReason,
       });
 
-      toast.success("Appointment cancelled successfully");
+      toast.success("Appointment cancelled successfully", {
+        style: {
+          background: "#3ac76b",
+          color: "#fff",
+        },
+      });
 
       const response = await specialistService.getAppointmentById(id!);
       setAppointment(response.data.data.appointment.appointment);
@@ -162,7 +221,12 @@ export default function AppointmentDetail() {
       setCancelReason("");
     } catch (error) {
       console.error("Error cancelling appointment:", error);
-      toast.error("Failed to cancel appointment");
+      toast.error("Failed to cancel appointment", {
+        style: {
+          background: "#cc3131",
+          color: "#fff",
+        },
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -226,7 +290,7 @@ export default function AppointmentDetail() {
           <CardHeader>
             <div className="flex justify-between items-center">
               <CardTitle className="text-red-600">Error</CardTitle>
-              <Button variant="ghost" onClick={() => navigate(-1)}>
+              <Button variant="ghost" onClick={() => navigate("/appointments")}>
                 <ArrowLeft className="h-4 w-4 mr-2" /> Back to Appointments
               </Button>
             </div>
@@ -235,7 +299,9 @@ export default function AppointmentDetail() {
             <p>{error || "Appointment not found"}</p>
           </CardContent>
           <CardFooter>
-            <Button onClick={() => navigate(-1)}>Return to Appointments</Button>
+            <Button onClick={() => navigate("/appointments")}>
+              Return to Appointments
+            </Button>
           </CardFooter>
         </Card>
       </div>
@@ -245,7 +311,7 @@ export default function AppointmentDetail() {
   return (
     <div className="container mx-auto py-6 px-4">
       <div className="flex items-center mb-6">
-        <Button variant="ghost" onClick={() => navigate("/appointment")}>
+        <Button variant="ghost" onClick={() => navigate("/appointments")}>
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Appointments
         </Button>
@@ -428,23 +494,83 @@ export default function AppointmentDetail() {
             <>
               <Separator />
               <div>
-                <h2 className="text-xl font-semibold mb-4">Feedback</h2>
-                {appointment.expertReview ? (
-                  <div className="bg-gray-50 p-4 rounded-md">
-                    <div className="flex items-center mb-2">
-                      <Star className="h-5 w-5 text-amber-400 mr-1" />
-                      <span className="font-medium">
-                        {appointment.expertReview.rating}/5
-                      </span>
-                    </div>
-                    <p>
-                      {appointment.expertReview.comment ||
-                        "No comments provided"}
-                    </p>
+                <h2 className="text-xl font-semibold mb-4">
+                  Feedback & Reviews
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Specialist Review */}
+                  <div className="bg-gray-50 p-4 rounded-md border border-gray-100">
+                    <h3 className="font-semibold text-gray-700 mb-2">
+                      User reivew for Expert
+                    </h3>
+                    {appointment?.expertReview ? (
+                      <>
+                        <div className="flex items-center mb-2">
+                          <div className="flex text-amber-400">
+                            {[...Array(5)].map((_, i) => (
+                              <Star
+                                key={i}
+                                className={`h-4 w-4 ${
+                                  i < (appointment?.expertReview?.rating || 0)
+                                    ? "fill-current"
+                                    : ""
+                                }`}
+                              />
+                            ))}
+                          </div>
+                          <span className="ml-2 text-sm font-medium">
+                            {appointment?.expertReview?.rating}/5
+                          </span>
+                        </div>
+                        <p className="text-gray-600 text-sm">
+                          {appointment?.expertReview?.content ||
+                            "No comments provided"}
+                        </p>
+                      </>
+                    ) : (
+                      <div className="flex items-center justify-center h-24 text-gray-400">
+                        <p>No feedback provided yet</p>
+                      </div>
+                    )}
                   </div>
-                ) : (
-                  <p className="text-gray-500">No feedback provided yet.</p>
-                )}
+
+                  {/* Patient Review */}
+                  <div className="bg-gray-50 p-4 rounded-md border border-gray-100">
+                    <h3 className="font-semibold text-gray-700 mb-2">
+                      User review for Appointment
+                    </h3>
+                    {appointment?.appointmentReview ? (
+                      <>
+                        <div className="flex items-center mb-2">
+                          <div className="flex text-amber-400">
+                            {[...Array(5)].map((_, i) => (
+                              <Star
+                                key={i}
+                                className={`h-4 w-4 ${
+                                  i <
+                                  (appointment?.appointmentReview?.rating || 0)
+                                    ? "fill-current"
+                                    : ""
+                                }`}
+                              />
+                            ))}
+                          </div>
+                          <span className="ml-2 text-sm font-medium">
+                            {appointment?.appointmentReview?.rating}/5
+                          </span>
+                        </div>
+                        <p className="text-gray-600 text-sm">
+                          {appointment?.appointmentReview?.comment ||
+                            "No comments provided"}
+                        </p>
+                      </>
+                    ) : (
+                      <div className="flex items-center justify-center h-24 text-gray-400">
+                        <p>Patient has not left a review yet</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </>
           )}
@@ -463,7 +589,14 @@ export default function AppointmentDetail() {
                 <XCircle className="h-4 w-4 mr-2" />
                 Cancel Appointment
               </Button>
-
+              <Button
+                variant="outline"
+                onClick={() => setConfirmEndSession(true)}
+                className="text-yellow-600 hover:bg-yellow-50 hover:text-yellow-700"
+              >
+                <CircleCheckBig className="h-4 w-4 mr-2" />
+                End Session
+              </Button>
               <Button onClick={handleStartSession}>
                 {appointment.type === "VIDEO" ? (
                   <Video className="h-4 w-4 mr-2" />
@@ -524,6 +657,29 @@ export default function AppointmentDetail() {
               disabled={!cancelReason.trim() || isSubmitting}
             >
               {isSubmitting ? "Cancelling..." : "Cancel Appointment"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* End Session Confirmation Dialog */}
+      <AlertDialog open={confirmEndSession} onOpenChange={setConfirmEndSession}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>End Appointment Session?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to end this session? This will mark the
+              appointment as completed. The patient will be notified that the
+              session has ended.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-yellow-600 hover:bg-yellow-700"
+              onClick={handleEndSession}
+            >
+              End Session
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -10,12 +10,13 @@ import {
   VideoOff,
   PhoneOff,
   LayoutGrid,
-  Settings,
-  Users,
+  // Settings,
+  // Users,
   MessageSquare,
   Share2,
   MoreVertical,
 } from "lucide-react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 interface StreamInfo {
   streamID: string;
@@ -27,12 +28,18 @@ interface RemoteStreams {
 }
 
 const VideoCallPage: React.FC = () => {
+  const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+  const location = useLocation();
+  const { zgtoken, userId, name } = location.state || {};
+
+  console.log("VideoCallPage params:", { id, zgtoken, userId, name });
   const [zegoEngine, setZegoEngine] = useState<ZegoExpressEngine | null>(null);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStreams, setRemoteStreams] = useState<RemoteStreams>({});
   const [isMicOn, setIsMicOn] = useState<boolean>(true);
   const [isCameraOn, setIsCameraOn] = useState<boolean>(true);
-  const [roomID, setRoomID] = useState<string>("");
+  const [roomID, setRoomID] = useState<string>(id || "");
   const [isInRoom, setIsInRoom] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const localVideoRef = useRef<HTMLVideoElement>(null);
@@ -46,8 +53,9 @@ const VideoCallPage: React.FC = () => {
 
   const appID: number = parseInt(import.meta.env.VITE_ZEGOCLOUD_APP_ID);
 
-  const userID: string = `expert1`;
-  const userName: string = "Dr. Smith";
+  const userID: string =
+    userId || "doctor_" + (Math.random() * 1000).toFixed(0);
+  const userName: string = name || "Dr. Smith";
 
   // Add a separate ref for the PiP video
   const localPipVideoRef = useRef<HTMLVideoElement>(null);
@@ -177,7 +185,9 @@ const VideoCallPage: React.FC = () => {
       setLocalStreamID(newStreamID);
 
       // This is a placeholder token. In a real application, you should fetch this from your backend.
-      const token = import.meta.env.VITE_ZEGOCLOUD_TEMP_TOKEN;
+      const token = zgtoken || import.meta.env.VITE_ZEGOCLOUD_TEMP_TOKEN;
+
+      console.log("token zg", token);
 
       await zegoEngine.loginRoom(roomID, token, { userID, userName });
       setIsInRoom(true);
@@ -238,6 +248,7 @@ const VideoCallPage: React.FC = () => {
 
       zegoEngine.logoutRoom(roomID);
       setIsInRoom(false);
+      navigate(-1);
     } catch (error) {
       console.error("Failed to end call:", error);
     }
@@ -371,14 +382,14 @@ const VideoCallPage: React.FC = () => {
             </div>
           )}
         </div>
-        <div className="flex items-center gap-3">
+        {/* <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" className="text-primary">
             <Users size={18} />
           </Button>
           <Button variant="ghost" size="icon" className="text-primary">
             <Settings size={18} />
           </Button>
-        </div>
+        </div> */}
       </div>
 
       {!isInRoom ? (

@@ -287,6 +287,15 @@ export default function Appointment() {
                 components={{
                   Caption: () => null, // hides the default header since we have our custom one
                 }}
+                classNames={{
+                  root: "w-full",
+                  table: "w-full table-fixed",
+                  head_row: "w-full",
+                  head_cell: "text-center w-full font-medium text-gray-500",
+                  row: "w-full",
+                  cell: "w-full h-12 p-1",
+                  day: "w-full h-full flex items-center justify-center rounded-md",
+                }}
               />
 
               <div className="mt-4">

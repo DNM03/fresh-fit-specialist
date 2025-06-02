@@ -135,12 +135,22 @@ export default function Availability() {
       !editFormData.startTime ||
       !editFormData.endTime
     ) {
-      toast.error("All fields are required");
+      toast.error("All fields are required", {
+        style: {
+          background: "#cc3131",
+          color: "#fff",
+        },
+      });
       return;
     }
 
     if (editFormData.startTime >= editFormData.endTime) {
-      toast.error("End time must be after start time");
+      toast.error("End time must be after start time", {
+        style: {
+          background: "#cc3131",
+          color: "#fff",
+        },
+      });
       return;
     }
 
@@ -170,16 +180,31 @@ export default function Availability() {
         finalData
       );
       if (respose.status !== 200) {
-        toast.error("Failed to update availability");
+        toast.error("Failed to update availability", {
+          style: {
+            background: "#cc3131",
+            color: "#fff",
+          },
+        });
         throw new Error("Failed to update availability");
       }
 
-      toast.success("Availability updated successfully");
+      toast.success("Availability updated successfully", {
+        style: {
+          background: "#3ac76b",
+          color: "#fff",
+        },
+      });
       setEditingSlotId(null);
       fetchAvailabilities();
     } catch (error) {
       console.error("Error updating availability:", error);
-      toast.error("Failed to update availability");
+      toast.error("Failed to update availability", {
+        style: {
+          background: "#cc3131",
+          color: "#fff",
+        },
+      });
     } finally {
       setIsUpdating(false);
     }
@@ -198,14 +223,29 @@ export default function Availability() {
         slotToDelete
       );
       if (response.status !== 200) {
-        toast.error("Failed to delete availability");
+        toast.error("Failed to delete availability", {
+          style: {
+            background: "#cc3131",
+            color: "#fff",
+          },
+        });
         throw new Error("Failed to delete availability");
       }
-      toast.success("Availability deleted successfully");
+      toast.success("Availability deleted successfully", {
+        style: {
+          background: "#3ac76b",
+          color: "#fff",
+        },
+      });
       fetchAvailabilities(); // Refetch data after deletion
     } catch (error) {
       console.error("Error deleting availability:", error);
-      toast.error("Failed to delete availability");
+      toast.error("Failed to delete availability", {
+        style: {
+          background: "#cc3131",
+          color: "#fff",
+        },
+      });
     } finally {
       setIsDeleting(false);
       setSlotToDelete(null);

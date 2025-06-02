@@ -61,6 +61,8 @@ export interface AuthResponse {
   result: {
     access_token: string;
     refresh_token: string;
+    role?: number;
+    verify?: number;
   };
 }
 

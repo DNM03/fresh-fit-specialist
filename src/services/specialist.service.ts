@@ -128,6 +128,14 @@ class SpecialistService {
       data: data,
     });
   }
+  updateAppointmentStatus(
+    appointmentId: string,
+    status: string
+  ): Promise<AxiosResponse<any>> {
+    return apiService.patch<any>(`/appointments/${appointmentId}`, {
+      status: status,
+    });
+  }
 }
 const specialistService = new SpecialistService();
 export default specialistService;
