@@ -67,7 +67,7 @@ function LoginPage() {
         setError("An error occurred. Please try again.");
       }
       console.error("Login error:", error);
-      toast.error("An error occurred. Please try again.", {
+      toast.error("Email or password is incorrect. Please try again.", {
         style: {
           background: "#cc3131",
           color: "#fff",
