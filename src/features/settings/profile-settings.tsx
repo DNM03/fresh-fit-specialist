@@ -165,8 +165,8 @@ export function ProfileSettings() {
           // Reset form with fetched values
           form.reset({
             fullName: expertData.fullName || "",
-            dateOfBirth: expertData.user.dateOfBirth
-              ? new Date(expertData.user.dateOfBirth)
+            dateOfBirth: expertData.user.date_of_birth
+              ? new Date(expertData.user.date_of_birth)
               : new Date(),
             phoneNumber: expertData.user.phoneNumber || "",
             gender: expertData.user.gender || "Male",
@@ -258,6 +258,8 @@ export function ProfileSettings() {
       if (avatarFile) {
         imageRes = await mediaService.backupUploadImage(avatarFile);
       }
+
+      console.log(data.dateOfBirth);
 
       const responseUser = await userService.updateProfile({
         date_of_birth: data.dateOfBirth.toISOString(),
@@ -380,9 +382,25 @@ export function ProfileSettings() {
                   <FormItem>
                     <FormLabel>Phone Number</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="+84 123 456 789" />
+                      <Input
+                        {...field}
+                        placeholder="0123456789"
+                        onKeyPress={(e) => {
+                          const pattern = /[0-9]/;
+                          const inputChar = String.fromCharCode(e.charCode);
+                          if (!pattern.test(inputChar)) {
+                            e.preventDefault();
+                          }
+                        }}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/[^0-9]/g, "");
+                          field.onChange(value);
+                        }}
+                      />
                     </FormControl>
-                    <FormDescription>Your contact phone number</FormDescription>
+                    <FormDescription>
+                      Your contact phone number (numbers only)
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -419,10 +437,9 @@ export function ProfileSettings() {
                         <Calendar
                           mode="single"
                           selected={field.value}
+                          month={field.value}
                           onSelect={field.onChange}
-                          disabled={(date) =>
-                            date > new Date() || date < new Date("1900-01-01")
-                          }
+                          disabled={(date) => date > new Date()}
                           initialFocus
                         />
                       </PopoverContent>

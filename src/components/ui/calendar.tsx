@@ -91,10 +91,10 @@ function Calendar({
           const currentYear = displayMonth.getFullYear();
           const currentMonth = displayMonth.getMonth();
 
-          // Generate year options (current year ± 10 years)
+          // Generate year options (current year ± 70 years)
           const yearOptions = Array.from(
-            { length: 21 },
-            (_, i) => currentYear - 10 + i
+            { length: 141 },
+            (_, i) => currentYear - 70 + i
           );
 
           // Month names
