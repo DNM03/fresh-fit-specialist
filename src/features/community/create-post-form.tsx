@@ -50,8 +50,8 @@ export function CreatePostForm({
 
     try {
       let imageRes;
-      if (image[0].file) {
-        imageRes = await mediaService.backupUploadImage(image[0].file);
+      if (image[0]?.file) {
+        imageRes = await mediaService.backupUploadImage(image[0]?.file);
         if (!imageRes) {
           throw new Error("Image upload failed");
         }
@@ -62,7 +62,7 @@ export function CreatePostForm({
         content: content.trim(),
         type: "Expert_Post",
         user_id: currentUser?._id || "",
-        medias: imageRes?.result?.url ? [imageRes.result.url] : [""],
+        medias: imageRes?.result?.url ? [imageRes?.result?.url] : [""],
         mediaType: "Image",
         tags: ["Other"],
       });
