@@ -6,6 +6,7 @@ import { PostCard } from "@/features/community/post-card";
 import postService from "@/services/post.service";
 import { userService } from "@/services";
 import { ArrowUp } from "lucide-react";
+import { toast } from "sonner";
 
 export default function CommunityPage() {
   const [posts, setPosts] = useState<any[]>([]);
@@ -190,6 +191,12 @@ export default function CommunityPage() {
   const handleDeletePost = async (postId: string) => {
     try {
       await postService.deletePost(postId);
+      toast.success("Post deleted successfully", {
+        style: {
+          background: "#3ac76b",
+          color: "#fff",
+        },
+      });
       setIsLoading(true);
       setPage(1);
       fetchPosts(true);

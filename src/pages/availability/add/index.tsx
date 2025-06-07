@@ -88,8 +88,7 @@ export default function AddAvailabilityPage() {
         return;
       }
 
-      toast.success("", {
-        description: "Availability has been saved successfully",
+      toast.success("Availability has been saved successfully", {
         style: {
           background: "#3ac76b",
           color: "#fff",
