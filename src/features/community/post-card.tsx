@@ -1,5 +1,11 @@
 import { formatDistanceToNow, parseISO } from "date-fns";
-import { Heart, MoreHorizontal, AlertCircle, XCircle } from "lucide-react";
+import {
+  Heart,
+  MoreHorizontal,
+  AlertCircle,
+  XCircle,
+  Edit,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -27,6 +33,7 @@ interface PostCardProps {
   currentUser?: any;
   activeFilter?: string;
   onDeletePost?: (postId: string) => void;
+  onEditPost?: (post: any) => void; // Add edit handler
 }
 
 export function PostCard({
@@ -34,6 +41,7 @@ export function PostCard({
   currentUser,
   activeFilter = "all",
   onDeletePost,
+  onEditPost,
 }: PostCardProps) {
   const isPending = post.status === "Pending";
   const isRejected = post.status === "Rejected";
@@ -117,9 +125,20 @@ export function PostCard({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   {post.user_id === currentUser?._id && (
-                    <DropdownMenuItem onClick={() => onDeletePost?.(post._id)}>
-                      Delete Post
-                    </DropdownMenuItem>
+                    <>
+                      {isRejected && (
+                        <DropdownMenuItem onClick={() => onEditPost?.(post)}>
+                          <Edit className="h-4 w-4 mr-2" />
+                          Edit Post
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem
+                        onClick={() => onDeletePost?.(post._id)}
+                      >
+                        <XCircle className="h-4 w-4 mr-2" />
+                        Delete Post
+                      </DropdownMenuItem>
+                    </>
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
