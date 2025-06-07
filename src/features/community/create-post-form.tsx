@@ -54,8 +54,7 @@ export function CreatePostForm({
     e.preventDefault();
 
     if (!content.trim()) {
-      toast.error("Error", {
-        description: "Post content cannot be empty",
+      toast.error("Post content cannot be empty", {
         style: {
           background: "#cc3131",
           color: "#fff",
@@ -80,11 +79,11 @@ export function CreatePostForm({
         await postService.updatePost(editPost._id, {
           title: title.trim(),
           content: content.trim(),
+          status: "Pending",
           ...(imageUrl ? { medias: [imageUrl] } : {}),
         });
 
-        toast.success("Success", {
-          description: "Your post has been updated",
+        toast.success("Your post has been updated", {
           style: {
             background: "#3ac76b",
             color: "#fff",
@@ -106,8 +105,7 @@ export function CreatePostForm({
           tags: ["Other"],
         });
 
-        toast.success("Success", {
-          description: "Your post has been submitted for review",
+        toast.success("Your post has been submitted for review", {
           style: {
             background: "#3ac76b",
             color: "#fff",
@@ -129,15 +127,17 @@ export function CreatePostForm({
         editPost ? "Error updating post:" : "Error creating post:",
         error
       );
-      toast.error("Error", {
-        description: editPost
+      toast.error(
+        editPost
           ? "Failed to update post. Please try again."
           : "Failed to create post. Please try again.",
-        style: {
-          background: "#cc3131",
-          color: "#fff",
-        },
-      });
+        {
+          style: {
+            background: "#cc3131",
+            color: "#fff",
+          },
+        }
+      );
     } finally {
       setIsSubmitting(false);
     }

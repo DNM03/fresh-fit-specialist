@@ -108,9 +108,7 @@ export function AccountSettings() {
       const errorMessage =
         error.response?.data?.message ||
         "Failed to update password. Please try again.";
-      toast.error("Error updating password", {
-        description: errorMessage,
-
+      toast.error("Error updating password, " + errorMessage, {
         style: {
           background: "#cc3131",
           color: "#fff",
