@@ -15,6 +15,7 @@ export default function CommunityPage() {
   const [activeFilter, setActiveFilter] = useState<PostFilterValue>("all");
   const [isLoading, setIsLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<any>();
+  const [editingPost, setEditingPost] = useState<any | null>(null);
   const observerTarget = useRef(null);
 
   const fetchPosts = async (resetPage = false) => {
@@ -163,6 +164,24 @@ export default function CommunityPage() {
   };
 
   const handlePostCreated = () => {
+    setEditingPost(null);
+    setIsLoading(true);
+    setPage(1);
+    fetchPosts(true);
+  };
+
+  const handleEditPost = (post: any) => {
+    setEditingPost(post);
+    // Scroll to the form
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingPost(null);
+  };
+
+  const handlePostUpdated = () => {
+    setEditingPost(null);
     setIsLoading(true);
     setPage(1);
     fetchPosts(true);
@@ -186,10 +205,20 @@ export default function CommunityPage() {
     <div className="container py-6 px-4">
       <h1 className="text-3xl font-bold mb-6">Community</h1>
 
-      <CreatePostForm
-        onPostCreated={handlePostCreated}
-        currentUser={userProfile}
-      />
+      {/* Show either edit form or create form */}
+      {editingPost ? (
+        <CreatePostForm
+          onPostCreated={handlePostUpdated}
+          currentUser={userProfile}
+          editPost={editingPost}
+          onCancelEdit={handleCancelEdit}
+        />
+      ) : (
+        <CreatePostForm
+          onPostCreated={handlePostCreated}
+          currentUser={userProfile}
+        />
+      )}
 
       <PostFilters
         activeFilter={activeFilter}
@@ -207,6 +236,7 @@ export default function CommunityPage() {
               currentUser={userProfile}
               activeFilter={activeFilter}
               onDeletePost={handleDeletePost}
+              onEditPost={handleEditPost}
             />
           ))}
           <div ref={observerTarget} className="h-10" />

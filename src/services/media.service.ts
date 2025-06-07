@@ -33,7 +33,7 @@ class MediaService {
     formData.append("image", image);
 
     const response = await axios.post(
-      `${BACKUP_MEDIA_API_URL}/images`,
+      `${BACKUP_MEDIA_API_URL}/medias/upload-images`,
       formData,
       {
         headers: {
@@ -49,7 +49,7 @@ class MediaService {
     formData.append("video", video);
 
     const response = await axios.post(
-      `${BACKUP_MEDIA_API_URL}/videos`,
+      `${BACKUP_MEDIA_API_URL}/medias/upload-videos`,
       formData,
       {
         headers: {

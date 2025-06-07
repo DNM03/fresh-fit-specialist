@@ -74,6 +74,9 @@ class PostService {
   deletePost(id: string): Promise<AxiosResponse> {
     return apiService.delete<AxiosResponse>(`/posts/${id}`);
   }
+  updatePost(id: string, post: any): Promise<AxiosResponse> {
+    return apiService.patch<AxiosResponse>(`/posts/${id}`, post);
+  }
 }
 
 const postService = new PostService();
