@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { format, parseISO, differenceInMinutes } from "date-fns";
+import { format, parseISO, differenceInMinutes, isPast } from "date-fns";
 import {
   ArrowLeft,
   Clock,
@@ -51,7 +51,7 @@ interface AppointmentDetail {
     fullName: string;
     email: string;
     date_of_birth: string;
-    gender: number;
+    gender: string;
     username: string;
     avatar: string;
     activityLevel: string;
@@ -258,21 +258,37 @@ export default function AppointmentDetail() {
     }
   };
 
-  const getFormattedGender = (gender: number) => {
-    switch (gender) {
-      case 0:
-        return "Female";
-      case 1:
-        return "Male";
-      case 2:
-        return "Other";
-      default:
-        return "Not specified";
-    }
-  };
+  // const getFormattedGender = (gender: number) => {
+  //   switch (gender) {
+  //     case 0:
+  //       return "Female";
+  //     case 1:
+  //       return "Male";
+  //     case 2:
+  //       return "Other";
+  //     default:
+  //       return "Not specified";
+  //   }
+  // };
 
   const calculateDuration = (startTime: string, endTime: string) => {
     return differenceInMinutes(parseISO(endTime), parseISO(startTime));
+  };
+
+  // Add a function to check if appointment is in the past
+  const isAppointmentPast = (appointment: AppointmentDetail) => {
+    const appointmentDate = parseISO(appointment.date);
+    return isPast(appointmentDate) && !isToday(appointmentDate);
+  };
+
+  // Helper function to check if a date is today
+  const isToday = (date: Date) => {
+    const today = new Date();
+    return (
+      date.getDate() === today.getDate() &&
+      date.getMonth() === today.getMonth() &&
+      date.getFullYear() === today.getFullYear()
+    );
   };
 
   if (loading) {
@@ -411,7 +427,7 @@ export default function AppointmentDetail() {
                 <div>
                   <h3 className="text-sm text-gray-500">Gender</h3>
                   <p className="font-medium">
-                    {getFormattedGender(appointment.user.gender)}
+                    {appointment.user.gender}
                   </p>
                 </div>
 
@@ -577,42 +593,52 @@ export default function AppointmentDetail() {
         </CardContent>
 
         <CardFooter className="flex justify-end gap-2">
-          {/* Dynamic buttons based on appointment status */}
-          {(appointment.status === "PENDING" ||
-            appointment.status === "CONFIRMED") && (
+          {/* Only show buttons if appointment is not in the past */}
+          {!isAppointmentPast(appointment) && (
             <>
-              <Button
-                variant="outline"
-                onClick={() => setConfirmCancel(true)}
-                className="text-red-600 hover:bg-red-50 hover:text-red-700"
-              >
-                <XCircle className="h-4 w-4 mr-2" />
-                Cancel Appointment
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => setConfirmEndSession(true)}
-                className="text-yellow-600 hover:bg-yellow-50 hover:text-yellow-700"
-              >
-                <CircleCheckBig className="h-4 w-4 mr-2" />
-                End Session
-              </Button>
-              <Button onClick={handleStartSession}>
-                {appointment.type === "VIDEO" ? (
-                  <Video className="h-4 w-4 mr-2" />
-                ) : (
-                  <Phone className="h-4 w-4 mr-2" />
-                )}
-                Start Session
-              </Button>
+              {(appointment.status === "PENDING" ||
+                appointment.status === "CONFIRMED") && (
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={() => setConfirmCancel(true)}
+                    className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                  >
+                    <XCircle className="h-4 w-4 mr-2" />
+                    Cancel Appointment
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setConfirmEndSession(true)}
+                    className="text-yellow-600 hover:bg-yellow-50 hover:text-yellow-700"
+                  >
+                    <CircleCheckBig className="h-4 w-4 mr-2" />
+                    End Session
+                  </Button>
+                  <Button onClick={handleStartSession}>
+                    {appointment.type === "VIDEO" ? (
+                      <Video className="h-4 w-4 mr-2" />
+                    ) : (
+                      <Phone className="h-4 w-4 mr-2" />
+                    )}
+                    Start Session
+                  </Button>
+                </>
+              )}
+
+              {appointment.status === "CONFIRMED" && appointment.meetingLink && (
+                <Button onClick={handleEndSession}>
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  End Session
+                </Button>
+              )}
             </>
           )}
-
-          {appointment.status === "CONFIRMED" && appointment.meetingLink && (
-            <Button onClick={handleEndSession}>
-              <CheckCircle className="h-4 w-4 mr-2" />
-              End Session
-            </Button>
+          {/* Display a message when appointment is in the past */}
+          {isAppointmentPast(appointment) && (
+            <p className="text-gray-500 italic">
+              This appointment has expired and no actions are available.
+            </p>
           )}
         </CardFooter>
       </Card>

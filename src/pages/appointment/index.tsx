@@ -378,9 +378,8 @@ export default function Appointment() {
                     <SelectContent>
                       <SelectItem value="all">All Statuses</SelectItem>
                       <SelectItem value="confirmed">Confirmed</SelectItem>
-                      <SelectItem value="pending">Pending</SelectItem>
                       <SelectItem value="cancelled">Cancelled</SelectItem>
-                      <SelectItem value="rescheduled">Rescheduled</SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -499,9 +498,9 @@ export default function Appointment() {
                             <div className="space-y-8 pl-8">
                               {groupedAppointments[dateKey].map((slot) => (
                                 <div key={slot.id} className="relative">
-                                  <div className="absolute -left-4 top-1 w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                                  {/* <div className="absolute -left-4 top-1 w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
                                     {getAppointmentIcon(slot.appointment?.type)}
-                                  </div>
+                                  </div> */}
                                   <div className="p-4 border rounded-lg hover:bg-gray-50">
                                     <div className="flex justify-between items-start">
                                       <div>
