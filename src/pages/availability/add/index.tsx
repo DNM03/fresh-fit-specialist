@@ -35,12 +35,34 @@ export default function AddAvailabilityPage() {
     initialDate ? new Date(initialDate) : new Date()
   );
   const [startTime, setStartTime] = useState("09:00");
-  const [endTime, setEndTime] = useState("09:45");
+  const [endTime, setEndTime] = useState("09:20");
   const [isLoading, setIsLoading] = useState(false);
 
   const [recurringType, setRecurringType] = useState<
     "ONE_MONTH" | "EVERY_MONTH" | "ONE_DAY"
   >("ONE_MONTH");
+
+  const calculateEndTime = (start: string): string => {
+    const [hours, minutes] = start.split(":").map(Number);
+
+    let newMinutes = minutes + 20;
+    let newHours = hours;
+
+    if (newMinutes >= 60) {
+      newHours = (newHours + 1) % 24;
+      newMinutes = newMinutes % 60;
+    }
+
+    return `${newHours.toString().padStart(2, "0")}:${newMinutes
+      .toString()
+      .padStart(2, "0")}`;
+  };
+
+  const handleStartTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newStartTime = e.target.value;
+    setStartTime(newStartTime);
+    setEndTime(calculateEndTime(newStartTime));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,8 +78,8 @@ export default function AddAvailabilityPage() {
         return;
       }
 
-      if (!startTime || !endTime) {
-        toast.error("Please select start and end times", {
+      if (!startTime) {
+        toast.error("Please select a start time", {
           style: {
             background: "#cc3131",
             color: "#fff",
@@ -66,15 +88,6 @@ export default function AddAvailabilityPage() {
         return;
       }
 
-      if (startTime >= endTime) {
-        toast.error("End time must be after start time", {
-          style: {
-            background: "#cc3131",
-            color: "#fff",
-          },
-        });
-        return;
-      }
       const today = new Date();
       const isToday =
         selectedDate.getDate() === today.getDate() &&
@@ -98,6 +111,7 @@ export default function AddAvailabilityPage() {
           return;
         }
       }
+
       const availabilityData = {
         availability: {
           date: format(selectedDate, "yyyy-MM-dd"),
@@ -211,7 +225,7 @@ export default function AddAvailabilityPage() {
 
                   {/* Time Selection */}
                   <div className="space-y-4">
-                    <Label>Time Slot</Label>
+                    <Label>Time Slot (20 minutes duration)</Label>
                     <div className="flex items-center space-x-4">
                       <div className="flex-shrink-0">
                         <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
@@ -227,19 +241,23 @@ export default function AddAvailabilityPage() {
                             id="start-time"
                             type="time"
                             value={startTime}
-                            onChange={(e) => setStartTime(e.target.value)}
+                            onChange={handleStartTimeChange}
                           />
                         </div>
                         <div className="space-y-1">
                           <Label htmlFor="end-time" className="text-xs">
-                            End Time
+                            End Time (Auto-calculated)
                           </Label>
                           <Input
                             id="end-time"
                             type="time"
                             value={endTime}
-                            onChange={(e) => setEndTime(e.target.value)}
+                            disabled
+                            className="bg-gray-50 cursor-not-allowed"
                           />
+                          <p className="text-xs text-gray-500 mt-1">
+                            Fixed 20 minute duration
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -313,7 +331,7 @@ export default function AddAvailabilityPage() {
                     <div className="mt-2 space-y-1">
                       <div className="text-sm text-green-700 flex items-center">
                         <Clock className="h-3 w-3 mr-1" />
-                        {startTime} - {endTime}
+                        {startTime} - {endTime} (20 minutes)
                       </div>
                     </div>
                     <div className="mt-3 text-xs text-green-800 font-medium">
