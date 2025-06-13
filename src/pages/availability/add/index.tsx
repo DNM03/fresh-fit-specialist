@@ -47,24 +47,56 @@ export default function AddAvailabilityPage() {
     try {
       setIsLoading(true);
       if (!selectedDate) {
-        toast("", {
-          description: "Please select a date",
+        toast.error("Please select a date", {
+          style: {
+            background: "#cc3131",
+            color: "#fff",
+          },
         });
         return;
       }
 
       if (!startTime || !endTime) {
-        toast("", {
-          description: "Please select start and end times",
+        toast.error("Please select start and end times", {
+          style: {
+            background: "#cc3131",
+            color: "#fff",
+          },
         });
         return;
       }
 
       if (startTime >= endTime) {
-        toast("", {
-          description: "End time must be after start time",
+        toast.error("End time must be after start time", {
+          style: {
+            background: "#cc3131",
+            color: "#fff",
+          },
         });
         return;
+      }
+      const today = new Date();
+      const isToday =
+        selectedDate.getDate() === today.getDate() &&
+        selectedDate.getMonth() === today.getMonth() &&
+        selectedDate.getFullYear() === today.getFullYear();
+
+      if (isToday) {
+        const currentHour = today.getHours();
+        const currentMinute = today.getMinutes();
+        const currentTimeString = `${currentHour
+          .toString()
+          .padStart(2, "0")}:${currentMinute.toString().padStart(2, "0")}`;
+
+        if (startTime <= currentTimeString) {
+          toast.error("For today, start time must be later than current time", {
+            style: {
+              background: "#cc3131",
+              color: "#fff",
+            },
+          });
+          return;
+        }
       }
       const availabilityData = {
         availability: {
@@ -95,14 +127,23 @@ export default function AddAvailabilityPage() {
         },
       });
       navigate("/availability");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving availability:", error);
-      toast.error("An error occurred while saving availability", {
-        style: {
-          background: "#cc3131",
-          color: "#fff",
-        },
-      });
+      if (error.response && error.response.status === 400) {
+        toast.error("Time slot overlaps with existing availability", {
+          style: {
+            background: "#cc3131",
+            color: "#fff",
+          },
+        });
+      } else {
+        toast.error("An error occurred while saving availability", {
+          style: {
+            background: "#cc3131",
+            color: "#fff",
+          },
+        });
+      }
     } finally {
       setIsLoading(false);
     }

@@ -22,7 +22,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { format, isSameDay, parseISO } from "date-fns";
+import {
+  format,
+  isSameDay,
+  parseISO,
+  isAfter,
+  endOfMonth,
+  startOfToday,
+  isBefore,
+} from "date-fns";
 import {
   Plus,
   Calendar,
@@ -38,9 +46,19 @@ import { Link } from "react-router-dom";
 import specialistService from "@/services/specialist.service";
 import { toast } from "sonner";
 
-function formatDateTime(isoString: string, formatStr: string = "PPpp"): string {
+function formatDateTime(
+  dateString: string,
+  formatStr: string = "PPpp"
+): string {
   try {
-    return format(parseISO(isoString), formatStr);
+    const timeMatch = dateString.match(/(\d{2}):(\d{2}):(\d{2})/);
+    if (timeMatch) {
+      const [, hours, minutes] = timeMatch;
+      const today = new Date();
+      today.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+      return format(today, formatStr);
+    }
+    throw new Error("Time not found");
   } catch (error) {
     console.error("Invalid date format:", error);
     return "Invalid date";
@@ -48,12 +66,14 @@ function formatDateTime(isoString: string, formatStr: string = "PPpp"): string {
 }
 
 function calculateDuration(startTime: string, endTime: string): number {
-  const startDate = parseISO(startTime);
-  const endDate = parseISO(endTime);
-
-  const diffInMinutes = (endDate.getTime() - startDate.getTime()) / (1000 * 60);
-
-  return diffInMinutes;
+  try {
+    const startDate = new Date(startTime);
+    const endDate = new Date(endTime);
+    return (endDate.getTime() - startDate.getTime()) / (1000 * 60);
+  } catch (error) {
+    console.error("Error calculating duration:", error);
+    return 0;
+  }
 }
 
 export default function Availability() {
@@ -108,13 +128,39 @@ export default function Availability() {
   }, [specialist, currentMonth]);
 
   const handleEdit = (slot: any) => {
-    // Format the date to YYYY-MM-DD for the date input
     const slotDate = parseISO(slot.startTime);
+    const today = startOfToday();
+
+    if (isBefore(slotDate, today)) {
+      toast.error("Cannot edit past availability slots", {
+        style: {
+          background: "#cc3131",
+          color: "#fff",
+        },
+      });
+      return;
+    }
+
     const formattedDate = format(slotDate, "yyyy-MM-dd");
 
-    // Format times to HH:MM for time inputs
-    const formattedStartTime = format(parseISO(slot.startTime), "HH:mm");
-    const formattedEndTime = format(parseISO(slot.endTime), "HH:mm");
+    console.log(slot.startTime, slot.endTime);
+
+    function extractRawTime(isoString: string): string {
+      try {
+        const timeMatch = isoString.match(/T(\d{2}):(\d{2})/);
+        if (timeMatch) {
+          return `${timeMatch[1]}:${timeMatch[2]}`;
+        }
+        throw new Error("Invalid ISO format");
+      } catch (error) {
+        console.error("Error extracting time:", error);
+        return "Invalid time";
+      }
+    }
+
+    const formattedStartTime = extractRawTime(slot.startTime);
+
+    const formattedEndTime = extractRawTime(slot.endTime);
 
     setEditingSlotId(slot.id);
     setEditFormData({
@@ -156,22 +202,19 @@ export default function Availability() {
 
     setIsUpdating(true);
     try {
-      const startDate = new Date(
-        `${editFormData.date}T${editFormData.startTime}:00`
+      const localDate = new Date(
+        `${editFormData.date}T${editFormData.startTime}:00Z`
       );
       const endDate = new Date(
-        `${editFormData.date}T${editFormData.endTime}:00`
+        `${editFormData.date}T${editFormData.endTime}:00Z`
       );
-
-      const startDateTime = startDate.toISOString();
-      const endDateTime = endDate.toISOString();
 
       const dateObj = new Date(editFormData.date);
 
       const finalData = {
         date: dateObj.toISOString(),
-        startTime: startDateTime,
-        endTime: endDateTime,
+        startTime: localDate,
+        endTime: endDate,
       };
       console.log("Updating slot with data:", finalData);
 
@@ -210,7 +253,21 @@ export default function Availability() {
     }
   };
 
-  const handleDeleteClick = (slotId: string) => {
+  const handleDeleteClick = (slotId: string, startTime: string) => {
+    // Check if slot date is before today
+    const slotDate = parseISO(startTime);
+    const today = startOfToday();
+
+    if (isBefore(slotDate, today)) {
+      toast.error("Cannot delete past availability slots", {
+        style: {
+          background: "#cc3131",
+          color: "#fff",
+        },
+      });
+      return;
+    }
+
     setSlotToDelete(slotId);
     setIsDeleting(true);
   };
@@ -265,11 +322,15 @@ export default function Availability() {
     );
   };
 
-  // Get availabilities for the selected date
   const selectedDateAvailabilities = selectedDate
-    ? availabilities.filter((avail: any) =>
-        isSameDay(parseISO(avail.date), selectedDate)
-      )[0]?.slots || []
+    ? availabilities
+        .filter((avail: any) =>
+          isSameDay(parseISO(avail.date), selectedDate)
+        )[0]
+        ?.slots.sort(
+          (a: any, b: any) =>
+            new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+        ) || []
     : [];
 
   return (
@@ -438,26 +499,44 @@ export default function Availability() {
                             >
                               {avail.isAvailable ? "Available" : "Unavailable"}
                             </Badge>
-                            {avail.isAvailable && (
-                              <div className="flex">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="text-blue-600 mr-1"
-                                  onClick={() => handleEdit(avail)}
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="text-red-600"
-                                  onClick={() => handleDeleteClick(avail.id)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            )}
+                            {avail.isAvailable &&
+                              !isBefore(
+                                parseISO(avail.startTime),
+                                startOfToday()
+                              ) && (
+                                <div className="flex">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="text-blue-600 mr-1"
+                                    onClick={() => handleEdit(avail)}
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="text-red-600"
+                                    onClick={() =>
+                                      handleDeleteClick(
+                                        avail.id,
+                                        avail.startTime
+                                      )
+                                    }
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              )}
+                            {avail.isAvailable &&
+                              isBefore(
+                                parseISO(avail.startTime),
+                                startOfToday()
+                              ) && (
+                                <div className="text-xs text-gray-400 italic">
+                                  Past slot
+                                </div>
+                              )}
                           </div>
                         </div>
 
@@ -632,13 +711,28 @@ export default function Availability() {
       <Card className="mt-6">
         <CardHeader>
           <CardTitle>Upcoming Available Slots</CardTitle>
-          <CardDescription>All your upcoming availability</CardDescription>
+          <CardDescription>
+            Available slots from today to the end of this month
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             {availabilities?.length > 0 ? (
               availabilities
-                ?.filter((avail: any) => avail?.slots?.length > 0)
+                ?.filter((avail: any) => {
+                  if (!avail?.slots?.length) return false;
+
+                  const today = startOfToday();
+                  const availDate = parseISO(avail.date);
+                  const monthEnd = endOfMonth(today);
+
+                  return (
+                    (isAfter(availDate, today) ||
+                      isSameDay(availDate, today)) &&
+                    (isSameDay(availDate, monthEnd) ||
+                      isAfter(monthEnd, availDate))
+                  );
+                })
                 ?.sort(
                   (a: any, b: any) =>
                     new Date(a.date).getTime() - new Date(b.date).getTime()
@@ -684,26 +778,44 @@ export default function Availability() {
                               >
                                 {slot.isAvailable ? "Available" : "Unavailable"}
                               </Badge>
-                              {slot.isAvailable && (
-                                <div className="flex">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="text-blue-600 mr-1"
-                                    onClick={() => handleEdit(slot)} // Added onClick handler here
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="text-red-600"
-                                    onClick={() => handleDeleteClick(slot.id)}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              )}
+                              {slot.isAvailable &&
+                                !isBefore(
+                                  parseISO(slot.startTime),
+                                  startOfToday()
+                                ) && (
+                                  <div className="flex">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="text-blue-600 mr-1"
+                                      onClick={() => handleEdit(slot)} // Added onClick handler here
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="text-red-600"
+                                      onClick={() =>
+                                        handleDeleteClick(
+                                          slot.id,
+                                          slot.startTime
+                                        )
+                                      }
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                )}
+                              {slot.isAvailable &&
+                                isBefore(
+                                  parseISO(slot.startTime),
+                                  startOfToday()
+                                ) && (
+                                  <div className="text-xs text-gray-400 italic">
+                                    Past slot
+                                  </div>
+                                )}
                             </div>
                           </div>
 
