@@ -28,7 +28,7 @@ import {
   Phone,
   Video,
 } from "lucide-react";
-import { format, parseISO, isSameDay } from "date-fns";
+import { format, parseISO } from "date-fns";
 import specialistService from "@/services/specialist.service";
 import { Link } from "react-router-dom";
 
@@ -81,6 +81,13 @@ interface AppointmentSlot {
 interface DateAvailability {
   date: string;
   slots: AppointmentSlot[];
+}
+
+function isSameDate(isoString1: string, isoString2: string) {
+  const date1 = isoString1.substring(0, 10);
+  const date2 = isoString2.substring(0, 10);
+
+  return date1 === date2;
 }
 
 export default function Appointment() {
@@ -191,13 +198,23 @@ export default function Appointment() {
       statusFilter === "all" ||
       appointmentStatus.toLowerCase() === statusFilter.toLowerCase();
 
-    const appointmentDate = parseISO(appointment.startTime);
-    const matchesDate = selectedDate
-      ? isSameDay(appointmentDate, selectedDate)
-      : true;
+    console.log(appointment.startTime, "->", selectedDate?.toISOString());
+
+    let comparisonDate = selectedDate;
+    if (selectedDate) {
+      comparisonDate = new Date(selectedDate);
+      comparisonDate.setHours(16, 0, 0, 0);
+    }
+
+    const matchesDate =
+      selectedDate && comparisonDate
+        ? isSameDate(appointment.startTime, comparisonDate.toISOString())
+        : true;
 
     return matchesSearch && matchesStatus && matchesDate;
   });
+
+  console.log("Filtered appointments:", filteredAppointments);
 
   const groupedAppointments = filteredAppointments.reduce(
     (acc: Record<string, AppointmentSlot[]>, appointment) => {
@@ -227,8 +244,12 @@ export default function Appointment() {
   const hasAppointments = (date: Date) =>
     appointments.some((appointment) => {
       try {
-        const appointmentDate = parseISO(appointment.startTime);
-        return isSameDay(appointmentDate, date);
+        let comparisonDate = date;
+        if (date) {
+          comparisonDate = new Date(date);
+          comparisonDate.setHours(16, 0, 0, 0);
+        }
+        return isSameDate(appointment.startTime, comparisonDate.toISOString());
       } catch (error) {
         return false;
       }
