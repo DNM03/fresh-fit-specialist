@@ -127,6 +127,26 @@ export default function Availability() {
     }
   }, [specialist, currentMonth]);
 
+  // Function to calculate end time (start time + 20 minutes)
+  const calculateEndTime = (start: string): string => {
+    const [hours, minutes] = start.split(":").map(Number);
+
+    // Add 20 minutes
+    let newMinutes = minutes + 20;
+    let newHours = hours;
+
+    // Handle minute overflow
+    if (newMinutes >= 60) {
+      newHours = (newHours + 1) % 24;
+      newMinutes = newMinutes % 60;
+    }
+
+    // Format as HH:MM
+    return `${newHours.toString().padStart(2, "0")}:${newMinutes
+      .toString()
+      .padStart(2, "0")}`;
+  };
+
   const handleEdit = (slot: any) => {
     const slotDate = parseISO(slot.startTime);
     const today = startOfToday();
@@ -143,8 +163,6 @@ export default function Availability() {
 
     const formattedDate = format(slotDate, "yyyy-MM-dd");
 
-    console.log(slot.startTime, slot.endTime);
-
     function extractRawTime(isoString: string): string {
       try {
         const timeMatch = isoString.match(/T(\d{2}):(\d{2})/);
@@ -159,8 +177,8 @@ export default function Availability() {
     }
 
     const formattedStartTime = extractRawTime(slot.startTime);
-
-    const formattedEndTime = extractRawTime(slot.endTime);
+    // Calculate end time based on start time + 20 minutes
+    const formattedEndTime = calculateEndTime(formattedStartTime);
 
     setEditingSlotId(slot.id);
     setEditFormData({
@@ -175,13 +193,21 @@ export default function Availability() {
     setEditFormData({ date: "", startTime: "", endTime: "" });
   };
 
+  // Update start time handler to automatically update end time
+  const handleStartTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newStartTime = e.target.value;
+    const newEndTime = calculateEndTime(newStartTime);
+
+    setEditFormData({
+      ...editFormData,
+      startTime: newStartTime,
+      endTime: newEndTime,
+    });
+  };
+
   const handleSaveEdit = async (slotId: string) => {
-    if (
-      !editFormData.date ||
-      !editFormData.startTime ||
-      !editFormData.endTime
-    ) {
-      toast.error("All fields are required", {
+    if (!editFormData.date || !editFormData.startTime) {
+      toast.error("Date and start time are required", {
         style: {
           background: "#cc3131",
           color: "#fff",
@@ -190,15 +216,7 @@ export default function Availability() {
       return;
     }
 
-    if (editFormData.startTime >= editFormData.endTime) {
-      toast.error("End time must be after start time", {
-        style: {
-          background: "#cc3131",
-          color: "#fff",
-        },
-      });
-      return;
-    }
+    // No need to check if start time < end time since it's automatically calculated
 
     setIsUpdating(true);
     try {
@@ -218,11 +236,11 @@ export default function Availability() {
       };
       console.log("Updating slot with data:", finalData);
 
-      const respose = await specialistService.updateAvailableSlot(
+      const response = await specialistService.updateAvailableSlot(
         slotId,
         finalData
       );
-      if (respose.status !== 200) {
+      if (response.status !== 200) {
         toast.error("Failed to update availability", {
           style: {
             background: "#cc3131",
@@ -566,27 +584,23 @@ export default function Availability() {
                                   id="edit-start-time"
                                   type="time"
                                   value={editFormData.startTime}
-                                  onChange={(e) =>
-                                    setEditFormData({
-                                      ...editFormData,
-                                      startTime: e.target.value,
-                                    })
-                                  }
+                                  onChange={handleStartTimeChange}
                                 />
                               </div>
                               <div className="space-y-1">
-                                <Label htmlFor="edit-end-time">End Time</Label>
+                                <Label htmlFor="edit-end-time">
+                                  End Time (20 min)
+                                </Label>
                                 <Input
                                   id="edit-end-time"
                                   type="time"
                                   value={editFormData.endTime}
-                                  onChange={(e) =>
-                                    setEditFormData({
-                                      ...editFormData,
-                                      endTime: e.target.value,
-                                    })
-                                  }
+                                  disabled
+                                  className="bg-gray-50 cursor-not-allowed"
                                 />
+                                <p className="text-xs text-gray-500">
+                                  Fixed 20 min duration
+                                </p>
                               </div>
                             </div>
                             <div className="flex justify-end mt-4 space-x-2">
@@ -847,29 +861,23 @@ export default function Availability() {
                                     id={`edit-start-time-${slot.id}`}
                                     type="time"
                                     value={editFormData.startTime}
-                                    onChange={(e) =>
-                                      setEditFormData({
-                                        ...editFormData,
-                                        startTime: e.target.value,
-                                      })
-                                    }
+                                    onChange={handleStartTimeChange}
                                   />
                                 </div>
                                 <div className="space-y-1">
                                   <Label htmlFor={`edit-end-time-${slot.id}`}>
-                                    End Time
+                                    End Time (20 min)
                                   </Label>
                                   <Input
                                     id={`edit-end-time-${slot.id}`}
                                     type="time"
                                     value={editFormData.endTime}
-                                    onChange={(e) =>
-                                      setEditFormData({
-                                        ...editFormData,
-                                        endTime: e.target.value,
-                                      })
-                                    }
+                                    disabled
+                                    className="bg-gray-50 cursor-not-allowed"
                                   />
+                                  <p className="text-xs text-gray-500">
+                                    Fixed 20 min duration
+                                  </p>
                                 </div>
                               </div>
                               <div className="flex justify-end mt-4 space-x-2">

@@ -84,7 +84,24 @@ interface AppointmentDetail {
   expertReview: any | null;
   appointmentReview: any | null;
 }
-
+function formatDateTime(
+  dateString: string,
+  formatStr: string = "PPpp"
+): string {
+  try {
+    const timeMatch = dateString.match(/(\d{2}):(\d{2}):(\d{2})/);
+    if (timeMatch) {
+      const [, hours, minutes] = timeMatch;
+      const today = new Date();
+      today.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+      return format(today, formatStr);
+    }
+    throw new Error("Time not found");
+  } catch (error) {
+    console.error("Invalid date format:", error);
+    return "Invalid date";
+  }
+}
 export default function AppointmentDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -362,8 +379,8 @@ export default function AppointmentDetail() {
               <div>
                 <h3 className="font-medium text-gray-600 text-sm">Time</h3>
                 <p className="font-semibold text-lg">
-                  {format(parseISO(appointment.startTime), "h:mm a")} -{" "}
-                  {format(parseISO(appointment.endTime), "h:mm a")}
+                  {formatDateTime(appointment.startTime, "h:mm a")} -{" "}
+                  {formatDateTime(appointment.endTime, "h:mm a")}
                 </p>
                 <p className="text-sm text-gray-500">
                   {calculateDuration(
@@ -426,9 +443,7 @@ export default function AppointmentDetail() {
 
                 <div>
                   <h3 className="text-sm text-gray-500">Gender</h3>
-                  <p className="font-medium">
-                    {appointment.user.gender}
-                  </p>
+                  <p className="font-medium">{appointment.user.gender}</p>
                 </div>
 
                 <div>
@@ -626,12 +641,13 @@ export default function AppointmentDetail() {
                 </>
               )}
 
-              {appointment.status === "CONFIRMED" && appointment.meetingLink && (
-                <Button onClick={handleEndSession}>
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  End Session
-                </Button>
-              )}
+              {appointment.status === "CONFIRMED" &&
+                appointment.meetingLink && (
+                  <Button onClick={handleEndSession}>
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    End Session
+                  </Button>
+                )}
             </>
           )}
           {/* Display a message when appointment is in the past */}
