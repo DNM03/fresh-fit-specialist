@@ -13,6 +13,7 @@ class PostService {
     status = "",
     sort_by = "created_at",
     order_by = "desc",
+    search,
   }: {
     page?: number;
     limit?: number;
@@ -20,13 +21,14 @@ class PostService {
     status?: string;
     sort_by?: string;
     order_by?: string;
+    search?: string;
   }): Promise<AxiosResponse<PostPaginatedResponse>> {
     return apiService.get<PostPaginatedResponse>(
       `/posts?page=${page}&limit=${limit}${type ? `&type=${type}` : ""}${
         status ? `&status=${status}` : ""
       }${sort_by ? `&sort_by=${sort_by}` : ""}${
         order_by ? `&order_by=${order_by}` : ""
-      }`
+      }${search ? `&search=${search}` : ""}`
     );
   }
   getPostById(id: string): Promise<AxiosResponse> {

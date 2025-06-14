@@ -144,7 +144,7 @@ export default function AddAvailabilityPage() {
     } catch (error: any) {
       console.error("Error saving availability:", error);
       if (error.response && error.response.status === 400) {
-        toast.error("Time slot overlaps with existing availability", {
+        toast.error(error.response.data.message, {
           style: {
             background: "#cc3131",
             color: "#fff",

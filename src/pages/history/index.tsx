@@ -11,13 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+
 import {
   Popover,
   PopoverContent,
@@ -89,7 +83,6 @@ interface DateAvailability {
 export default function History() {
   const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
   const [searchQuery, setSearchQuery] = useState("");
-  const [appointmentType, setAppointmentType] = useState("all");
   const [specialist, setSpecialist] = useState<any>();
   const [completedAppointments, setCompletedAppointments] = useState<
     AppointmentSlot[]
@@ -105,6 +98,7 @@ export default function History() {
       try {
         const response = await specialistService.getSpecialistByAccessToken();
         setSpecialist(response.data.data.expertInfo);
+        setAverageRating(response.data.data.expertInfo?.rating || 0);
       } catch (error) {
         console.error("Error fetching specialist profile:", error);
       }
@@ -159,7 +153,7 @@ export default function History() {
         setCompletedAppointments(completedSlots);
         setTotalAppointments(completedSlots.length);
         setTotalEarnings(monthlyEarnings);
-        setAverageRating(ratingCount > 0 ? ratingSum / ratingCount : 0);
+        // setAverageRating(ratingCount > 0 ? ratingSum / ratingCount : 0);
       } catch (error) {
         console.error("Error fetching appointment history:", error);
       } finally {
@@ -193,11 +187,7 @@ export default function History() {
         ?.includes(searchQuery.toLowerCase()) ||
       false;
 
-    const matchesType =
-      appointmentType === "all" ||
-      slot.appointment?.type?.toUpperCase() === appointmentType.toUpperCase();
-
-    return matchesSearch && matchesType;
+    return matchesSearch;
   });
 
   const handlePrevMonth = () => {
@@ -334,31 +324,14 @@ export default function History() {
               </Button>
             </div>
 
-            <div className="flex flex-col md:flex-row gap-2">
-              <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search patients..."
-                  className="pl-8 w-full md:w-[200px]"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-
-              <Select
-                value={appointmentType}
-                onValueChange={setAppointmentType}
-              >
-                <SelectTrigger className="w-full md:w-[180px]">
-                  <SelectValue placeholder="Type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="call">Call</SelectItem>
-                  <SelectItem value="video">Video</SelectItem>
-                  <SelectItem value="chat">Chat</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="relative">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search patients..."
+                className="pl-8 w-full md:w-[250px]"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
             </div>
           </div>
         </CardHeader>
@@ -524,7 +497,6 @@ export default function History() {
                 onClick={() => {
                   setSelectedMonth(new Date());
                   setSearchQuery("");
-                  setAppointmentType("all");
                 }}
               >
                 Check current month
