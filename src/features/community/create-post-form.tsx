@@ -36,14 +36,13 @@ export function CreatePostForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [image, setImage] = useState<ImageFile[]>([]);
   const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null);
+  const [imageDropzoneKey, setImageDropzoneKey] = useState<number>(0);
 
-  // Initialize the form with existing post data when editing
   useEffect(() => {
     if (editPost) {
       setTitle(editPost.title || "");
       setContent(editPost.content || "");
 
-      // Check if the post has a media image
       if (editPost.medias && editPost.medias.length > 0 && editPost.medias[0]) {
         setExistingImageUrl(editPost.medias[0]);
       }
@@ -83,7 +82,7 @@ export function CreatePostForm({
           ...(imageUrl ? { medias: [imageUrl] } : {}),
         });
 
-        toast.success("Your post has been updated", {
+        toast.success("Update post successfully", {
           style: {
             background: "#3ac76b",
             color: "#fff",
@@ -118,6 +117,8 @@ export function CreatePostForm({
       setContent("");
       setImage([]);
       setExistingImageUrl(null);
+      // Increment the key to force re-render of ImageDropzone
+      setImageDropzoneKey((prev) => prev + 1);
 
       if (onPostCreated) {
         onPostCreated();
@@ -198,8 +199,10 @@ export function CreatePostForm({
               </div>
             ) : (
               <ImageDropzone
+                key={imageDropzoneKey} // Add key prop to force re-render
                 maxImages={1}
                 maxSizeInMB={20}
+                initialImages={[]} // Explicitly set empty initial images
                 onImagesChange={(value) => {
                   setImage(value);
                   if (value.length) {

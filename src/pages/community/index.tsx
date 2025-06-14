@@ -5,8 +5,11 @@ import { CreatePostForm } from "@/features/community/create-post-form";
 import { PostCard } from "@/features/community/post-card";
 import postService from "@/services/post.service";
 import { userService } from "@/services";
-import { ArrowUp } from "lucide-react";
+import { ArrowUp, Search } from "lucide-react";
 import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 
 export default function CommunityPage() {
   const [posts, setPosts] = useState<any[]>([]);
@@ -18,8 +21,10 @@ export default function CommunityPage() {
   const [userProfile, setUserProfile] = useState<any>();
   const [editingPost, setEditingPost] = useState<any | null>(null);
   const observerTarget = useRef(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
 
-  const fetchPosts = async (resetPage = false) => {
+  const fetchPosts = async (resetPage = false, searchTerm = searchQuery) => {
     if ((loading || !hasMore) && !resetPage) return;
 
     setLoading(true);
@@ -35,6 +40,9 @@ export default function CommunityPage() {
         case "my-posts":
           status = "Published|Pending";
           break;
+        case "pending":
+          status = "Pending";
+          break;
         case "rejected":
           status = "Rejected";
           break;
@@ -42,12 +50,14 @@ export default function CommunityPage() {
           break;
       }
 
+      // Add search term to API call
       const response = await postService.searchPost({
         page: currentPage,
         limit: 20,
         status,
         sort_by: "created_at",
         order_by: "desc",
+        search: searchTerm || undefined, // Only include if there's a search term
       });
 
       const result = response.data as any;
@@ -55,7 +65,9 @@ export default function CommunityPage() {
       if (result?.result?.posts?.length > 0) {
         if (resetPage) {
           if (
-            (activeFilter === "my-posts" || activeFilter === "rejected") &&
+            (activeFilter === "my-posts" ||
+              activeFilter === "rejected" ||
+              activeFilter === "pending") &&
             userProfile
           ) {
             setPosts(
@@ -68,7 +80,9 @@ export default function CommunityPage() {
           }
         } else {
           if (
-            (activeFilter === "my-posts" || activeFilter === "rejected") &&
+            (activeFilter === "my-posts" ||
+              activeFilter === "rejected" ||
+              activeFilter === "pending") &&
             userProfile
           ) {
             setPosts((prev: any[]) => {
@@ -111,6 +125,7 @@ export default function CommunityPage() {
     } finally {
       setLoading(false);
       setIsLoading(false);
+      setIsSearching(false);
     }
   };
 
@@ -134,7 +149,7 @@ export default function CommunityPage() {
     setIsLoading(true);
     setPage(1);
     setHasMore(true);
-    fetchPosts(true);
+    fetchPosts(true, searchQuery);
   }, [activeFilter, userProfile]);
 
   useEffect(() => {
@@ -162,6 +177,23 @@ export default function CommunityPage() {
   const handleFilterChange = (value: PostFilterValue) => {
     if (value === activeFilter) return;
     setActiveFilter(value);
+  };
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSearching(true);
+    setIsLoading(true);
+    setPage(1);
+    setHasMore(true);
+    fetchPosts(true, searchQuery);
+  };
+
+  const clearSearch = () => {
+    setSearchQuery("");
+    setIsLoading(true);
+    setPage(1);
+    setHasMore(true);
+    fetchPosts(true, "");
   };
 
   const handlePostCreated = () => {
@@ -204,6 +236,7 @@ export default function CommunityPage() {
       console.error("Error deleting post:", error);
     }
   };
+
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -227,6 +260,32 @@ export default function CommunityPage() {
         />
       )}
 
+      {/* Search Bar */}
+      <Card className="mb-5">
+        <CardContent className="p-4">
+          <form onSubmit={handleSearch} className="flex gap-2 items-center">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
+              <Input
+                type="search"
+                placeholder="Search posts by title..."
+                className="pl-9 w-full"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            <Button type="submit" disabled={isSearching}>
+              {isSearching ? "Searching..." : "Search"}
+            </Button>
+            {searchQuery && (
+              <Button type="button" variant="outline" onClick={clearSearch}>
+                Clear
+              </Button>
+            )}
+          </form>
+        </CardContent>
+      </Card>
+
       <PostFilters
         activeFilter={activeFilter}
         onFilterChange={handleFilterChange}
@@ -236,6 +295,11 @@ export default function CommunityPage() {
         <div className="text-center py-8">Loading posts...</div>
       ) : posts.length > 0 ? (
         <div>
+          {searchQuery && (
+            <p className="text-muted-foreground mb-4">
+              Found {posts.length} results for "{searchQuery}"
+            </p>
+          )}
           {posts.map((post: any) => (
             <PostCard
               key={post._id}
@@ -250,8 +314,12 @@ export default function CommunityPage() {
         </div>
       ) : (
         <div className="text-center py-8 text-muted-foreground">
-          {activeFilter === "my-posts"
-            ? "You haven't created any posts yet."
+          {searchQuery
+            ? `No posts found matching "${searchQuery}".`
+            : activeFilter === "my-posts"
+            ? "You haven't created any published posts yet."
+            : activeFilter === "pending"
+            ? "You don't have any pending posts awaiting review."
             : activeFilter === "rejected"
             ? "You don't have any rejected posts."
             : "No posts found."}

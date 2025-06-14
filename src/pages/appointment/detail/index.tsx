@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { format, parseISO, differenceInMinutes, isPast } from "date-fns";
+import {
+  format,
+  parseISO,
+  differenceInMinutes,
+  isToday as dateFnsIsToday,
+  // isBefore,
+  // isAfter,
+} from "date-fns";
 import {
   ArrowLeft,
   Clock,
@@ -292,10 +299,30 @@ export default function AppointmentDetail() {
     return differenceInMinutes(parseISO(endTime), parseISO(startTime));
   };
 
-  // Add a function to check if appointment is in the past
-  const isAppointmentPast = (appointment: AppointmentDetail) => {
+  const isAppointmentActionable = (appointment: AppointmentDetail) => {
+    if (!appointment) return false;
+
+    const now = new Date();
     const appointmentDate = parseISO(appointment.date);
-    return isPast(appointmentDate) && !isToday(appointmentDate);
+    console.log(now, appointmentDate);
+    // const startTime = parseISO(appointment.startTime);
+    // const endTime = parseISO(appointment.endTime);
+    // const startTimePlus5Min = addMinutes(startTime, 5);
+
+    const isSameDay = dateFnsIsToday(appointmentDate);
+
+    console.log("isSameDay", isSameDay);
+    console.log("isAppointmentInFuture", isAppointmentInFuture(appointment));
+    console.log("isAppointmentExpired", isAppointmentExpired(appointment));
+
+    // const isAfterStartTimePlus5Min = isAfter(now, startTimePlus5Min);
+    // const isBeforeEndTime = isBefore(now, endTime);
+
+    return (
+      isSameDay &&
+      !isAppointmentInFuture(appointment) &&
+      !isAppointmentExpired(appointment)
+    );
   };
 
   // Helper function to check if a date is today
@@ -306,6 +333,45 @@ export default function AppointmentDetail() {
       date.getMonth() === today.getMonth() &&
       date.getFullYear() === today.getFullYear()
     );
+  };
+
+  const isAppointmentInFuture = (appointment: AppointmentDetail) => {
+    const now = new Date();
+
+    const startTime = new Date(
+      appointment.startTime + (appointment.startTime.endsWith("Z") ? "" : "Z")
+    );
+
+    const nowLocalDate = now.toLocaleDateString("en-CA");
+    const nowLocalTime = now.toLocaleTimeString("en-GB", { hour12: false });
+
+    const nowIso = `${nowLocalDate}T${nowLocalTime}.000Z`;
+
+    return nowIso < startTime.toISOString();
+  };
+
+  const isAppointmentExpired = (appointment: AppointmentDetail) => {
+    const now = new Date();
+    const endTime = parseISO(appointment.endTime);
+
+    const nowLocalDate = now.toLocaleDateString("en-CA");
+    const nowLocalTime = now.toLocaleTimeString("en-GB", { hour12: false });
+
+    const nowIso = `${nowLocalDate}T${nowLocalTime}.000Z`;
+
+    return nowIso > endTime.toISOString();
+  };
+
+  // Return appropriate message based on appointment timing
+  const getTimingMessage = (appointment: AppointmentDetail) => {
+    if (isAppointmentInFuture(appointment)) {
+      return "Session cannot be started yet. You can start the session 5 minutes after the scheduled start time.";
+    } else if (isAppointmentExpired(appointment)) {
+      return "This appointment has expired and no actions are available.";
+    } else if (!isToday(parseISO(appointment.date))) {
+      return "This appointment is scheduled for a different day.";
+    }
+    return "";
   };
 
   if (loading) {
@@ -487,8 +553,10 @@ export default function AppointmentDetail() {
               </div>
 
               <div>
-                <h3 className="text-sm text-gray-500">Fee</h3>
-                <p className="font-medium">${appointment.fees}</p>
+                <h3 className="text-sm text-gray-500">Fee (F2Coin)</h3>
+                <p className="font-medium">
+                  {appointment.fees.toLocaleString()}
+                </p>
               </div>
 
               <div>
@@ -607,55 +675,71 @@ export default function AppointmentDetail() {
           )}
         </CardContent>
 
-        <CardFooter className="flex justify-end gap-2">
-          {/* Only show buttons if appointment is not in the past */}
-          {!isAppointmentPast(appointment) && (
+        <CardFooter className="flex flex-col items-end gap-2">
+          {/* If appointment is PENDING or CONFIRMED, show action buttons */}
+          {(appointment.status === "PENDING" ||
+            appointment.status === "CONFIRMED") && (
             <>
-              {(appointment.status === "PENDING" ||
-                appointment.status === "CONFIRMED") && (
-                <>
-                  <Button
-                    variant="outline"
-                    onClick={() => setConfirmCancel(true)}
-                    className="text-red-600 hover:bg-red-50 hover:text-red-700"
-                  >
-                    <XCircle className="h-4 w-4 mr-2" />
-                    Cancel Appointment
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setConfirmEndSession(true)}
-                    className="text-yellow-600 hover:bg-yellow-50 hover:text-yellow-700"
-                  >
-                    <CircleCheckBig className="h-4 w-4 mr-2" />
-                    End Session
-                  </Button>
-                  <Button onClick={handleStartSession}>
-                    {appointment.type === "VIDEO" ? (
-                      <Video className="h-4 w-4 mr-2" />
-                    ) : (
-                      <Phone className="h-4 w-4 mr-2" />
-                    )}
-                    Start Session
-                  </Button>
-                </>
+              {/* Show timing info message when applicable */}
+              {getTimingMessage(appointment) && (
+                <p className="text-amber-600 italic text-sm mb-2 self-end">
+                  {getTimingMessage(appointment)}
+                </p>
               )}
 
-              {appointment.status === "CONFIRMED" &&
-                appointment.meetingLink && (
-                  <Button onClick={handleEndSession}>
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                    End Session
-                  </Button>
-                )}
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setConfirmCancel(true)}
+                  className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                  disabled={isAppointmentExpired(appointment)}
+                >
+                  <XCircle className="h-4 w-4 mr-2" />
+                  Cancel Appointment
+                </Button>
+
+                <Button
+                  variant="outline"
+                  onClick={() => setConfirmEndSession(true)}
+                  className="text-yellow-600 hover:bg-yellow-50 hover:text-yellow-700"
+                  disabled={!isAppointmentActionable(appointment)}
+                >
+                  <CircleCheckBig className="h-4 w-4 mr-2" />
+                  End Session
+                </Button>
+
+                <Button
+                  onClick={handleStartSession}
+                  disabled={!isAppointmentActionable(appointment)}
+                >
+                  {appointment.type === "VIDEO" ? (
+                    <Video className="h-4 w-4 mr-2" />
+                  ) : (
+                    <Phone className="h-4 w-4 mr-2" />
+                  )}
+                  Start Session
+                </Button>
+              </div>
             </>
           )}
-          {/* Display a message when appointment is in the past */}
-          {isAppointmentPast(appointment) && (
+
+          {/* If appointment is CONFIRMED and has a meeting link */}
+          {appointment.status === "CONFIRMED" && appointment.meetingLink && (
+            <Button
+              onClick={handleEndSession}
+              disabled={!isAppointmentActionable(appointment)}
+            >
+              <CheckCircle className="h-4 w-4 mr-2" />
+              End Session
+            </Button>
+          )}
+
+          {/* Display a message when appointment timing doesn't allow actions */}
+          {/* {isAppointmentExpired(appointment) && (
             <p className="text-gray-500 italic">
               This appointment has expired and no actions are available.
             </p>
-          )}
+          )} */}
         </CardFooter>
       </Card>
 

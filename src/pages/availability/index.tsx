@@ -160,8 +160,7 @@ export default function Availability() {
       });
       return;
     }
-
-    const formattedDate = format(slotDate, "yyyy-MM-dd");
+    const formattedDate = slot.startTime.split("T")[0];
 
     function extractRawTime(isoString: string): string {
       try {
@@ -258,9 +257,16 @@ export default function Availability() {
       });
       setEditingSlotId(null);
       fetchAvailabilities();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating availability:", error);
-      toast.error("Failed to update availability", {
+      let errorMessage = "Failed to update availability";
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      toast.error(errorMessage, {
         style: {
           background: "#cc3131",
           color: "#fff",
@@ -272,7 +278,6 @@ export default function Availability() {
   };
 
   const handleDeleteClick = (slotId: string, startTime: string) => {
-    // Check if slot date is before today
     const slotDate = parseISO(startTime);
     const today = startOfToday();
 
@@ -332,7 +337,6 @@ export default function Availability() {
     setSlotToDelete(null);
   };
 
-  // Function to check if a date has availability
   const hasAvailability = (date: Date) => {
     return (
       availabilities.find((avail: any) => isSameDay(parseISO(avail.date), date))
@@ -350,6 +354,12 @@ export default function Availability() {
             new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
         ) || []
     : [];
+
+  const isDateInPast = (date: Date | undefined): boolean => {
+    if (!date) return false;
+    const today = startOfToday();
+    return isBefore(date, today);
+  };
 
   return (
     <div className="container mx-auto py-6 px-4">
@@ -457,7 +467,7 @@ export default function Availability() {
                     : "No availability set for this date"}
                 </CardDescription>
               </div>
-              {selectedDate && (
+              {selectedDate && !isDateInPast(selectedDate) && (
                 <Link
                   to={`/availability/add?date=${format(
                     selectedDate,
@@ -469,6 +479,17 @@ export default function Availability() {
                     Add for This Date
                   </Button>
                 </Link>
+              )}
+              {selectedDate && isDateInPast(selectedDate) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled
+                  className="cursor-not-allowed"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Cannot Add to Past Date
+                </Button>
               )}
             </div>
           </CardHeader>
@@ -632,7 +653,7 @@ export default function Availability() {
                     <p className="text-gray-500 mb-4">
                       No availability set for this date
                     </p>
-                    {selectedDate && (
+                    {selectedDate && !isDateInPast(selectedDate) ? (
                       <Link
                         to={`/availability/add?date=${format(
                           selectedDate,
@@ -641,6 +662,12 @@ export default function Availability() {
                       >
                         <Button>Add Availability</Button>
                       </Link>
+                    ) : (
+                      selectedDate && (
+                        <p className="text-amber-600 text-sm">
+                          Cannot add availability to past dates
+                        </p>
+                      )
                     )}
                   </div>
                 )}
