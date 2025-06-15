@@ -5,8 +5,7 @@ import {
   parseISO,
   differenceInMinutes,
   isToday as dateFnsIsToday,
-  // isBefore,
-  // isAfter,
+  addMinutes,
 } from "date-fns";
 import {
   ArrowLeft,
@@ -302,21 +301,10 @@ export default function AppointmentDetail() {
   const isAppointmentActionable = (appointment: AppointmentDetail) => {
     if (!appointment) return false;
 
-    const now = new Date();
     const appointmentDate = parseISO(appointment.date);
-    console.log(now, appointmentDate);
-    // const startTime = parseISO(appointment.startTime);
-    // const endTime = parseISO(appointment.endTime);
-    // const startTimePlus5Min = addMinutes(startTime, 5);
 
+    // Check if it's the same day
     const isSameDay = dateFnsIsToday(appointmentDate);
-
-    console.log("isSameDay", isSameDay);
-    console.log("isAppointmentInFuture", isAppointmentInFuture(appointment));
-    console.log("isAppointmentExpired", isAppointmentExpired(appointment));
-
-    // const isAfterStartTimePlus5Min = isAfter(now, startTimePlus5Min);
-    // const isBeforeEndTime = isBefore(now, endTime);
 
     return (
       isSameDay &&
@@ -325,7 +313,35 @@ export default function AppointmentDetail() {
     );
   };
 
-  // Helper function to check if a date is today
+  // Add a new function to determine if end session is still allowed
+  // (appointment expired but within 30 min grace period)
+  const canEndSession = (appointment: AppointmentDetail) => {
+    if (!appointment) return false;
+
+    // Allow ending if appointment is active (can be started)
+    if (isAppointmentActionable(appointment)) return true;
+
+    const now = new Date();
+    const appointmentDate = parseISO(appointment.date);
+    const endTime = parseISO(appointment.endTime);
+    const endTimePlus30Min = addMinutes(endTime, 30);
+
+    // Convert to comparable format
+    const nowLocalDate = now.toLocaleDateString("en-CA");
+    const nowLocalTime = now.toLocaleTimeString("en-GB", { hour12: false });
+    const nowIso = `${nowLocalDate}T${nowLocalTime}.000Z`;
+
+    const endTimeStr = endTime.toISOString();
+    const endTimePlus30MinStr = endTimePlus30Min.toISOString();
+
+    // Check if it's today and within 30 min after end time
+    const isSameDay = dateFnsIsToday(appointmentDate);
+    const isAfterEndTime = nowIso > endTimeStr;
+    const isWithin30MinAfterEnd = nowIso <= endTimePlus30MinStr;
+
+    return isSameDay && isAfterEndTime && isWithin30MinAfterEnd;
+  };
+
   const isToday = (date: Date) => {
     const today = new Date();
     return (
@@ -371,6 +387,9 @@ export default function AppointmentDetail() {
     if (isAppointmentInFuture(appointment)) {
       return "Session cannot be started yet. You can start the session at the scheduled start time.";
     } else if (isAppointmentExpired(appointment)) {
+      if (canEndSession(appointment)) {
+        return "This appointment has ended. You can still end the session within 30 minutes after end time.";
+      }
       return "This appointment has expired and no actions are available.";
     } else if (!isToday(parseISO(appointment.date))) {
       return "This appointment is scheduled for a different day.";
@@ -584,7 +603,10 @@ export default function AppointmentDetail() {
                   </p>
                   {appointment.canceler && (
                     <p className="text-sm text-gray-500 mt-1">
-                      Cancelled by: {appointment.canceler}
+                      Cancelled by:{" "}
+                      {appointment.canceler === appointment.user._id
+                        ? appointment.user.fullName + " (Patient)"
+                        : "You"}
                     </p>
                   )}
                 </div>
@@ -706,7 +728,10 @@ export default function AppointmentDetail() {
                   variant="outline"
                   onClick={() => setConfirmEndSession(true)}
                   className="text-yellow-600 hover:bg-yellow-50 hover:text-yellow-700"
-                  disabled={!isAppointmentActionable(appointment)}
+                  disabled={
+                    !isAppointmentActionable(appointment) &&
+                    !canEndSession(appointment)
+                  }
                 >
                   <CircleCheckBig className="h-4 w-4 mr-2" />
                   End Session
