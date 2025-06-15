@@ -136,6 +136,28 @@ class SpecialistService {
       status: status,
     });
   }
+  getAppointmentsBySpecialistId({
+    specialistId,
+    page,
+    limit,
+    month,
+    year,
+  }: {
+    specialistId: string;
+    page?: number;
+    limit?: number;
+    month?: number;
+    year?: number;
+  }): Promise<AxiosResponse<any>> {
+    return apiService.get<any>(
+      `/appointments/expert/${specialistId}?page=${page}&limit=${limit}${
+        month ? `&month=${month}` : ""
+      }${year ? `&year=${year}` : ""}`
+    );
+  }
+  addNote(appointmentId: string, data: any): Promise<AxiosResponse<any>> {
+    return apiService.post<any>(`/appointments/${appointmentId}/leave-note`, data);
+  }
 }
 const specialistService = new SpecialistService();
 export default specialistService;
