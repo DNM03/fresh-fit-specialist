@@ -136,7 +136,7 @@ export function ProfileSettings() {
       experienceYears: 0,
       bio: "",
       languages: [],
-      consultationFee: 0,
+      consultationFee: 200000,
       avatar: "",
     },
     mode: "onChange",
@@ -229,13 +229,13 @@ export function ProfileSettings() {
     }
   };
 
-  const formatVND = (amount: number) => {
-    return new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
+  // const formatVND = (amount: number) => {
+  //   return new Intl.NumberFormat("vi-VN", {
+  //     style: "currency",
+  //     currency: "VND",
+  //     maximumFractionDigits: 0,
+  //   }).format(amount);
+  // };
 
   async function onSubmit(data: ProfileFormValues) {
     try {
@@ -473,34 +473,51 @@ export function ProfileSettings() {
                 )}
               />
             </div>
-
-            <FormField
-              control={form.control}
-              name="specialization"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Specialization</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <FormField
+                control={form.control}
+                name="specialization"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Specialization</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select a specialization" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {specializations.map((spec) => (
+                          <SelectItem key={spec.value} value={spec.value}>
+                            {spec.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>
+                      Your primary professional specialization
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="experienceYears"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Years of Experience</FormLabel>
                     <FormControl>
-                      <SelectTrigger className="w-1/2">
-                        <SelectValue placeholder="Select a specialization" />
-                      </SelectTrigger>
+                      <Input type="number" {...field} min="0" />
                     </FormControl>
-                    <SelectContent>
-                      {specializations.map((spec) => (
-                        <SelectItem key={spec.value} value={spec.value}>
-                          {spec.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormDescription>
-                    Your primary professional specialization
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    <FormDescription>
+                      Total years of professional experience
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <FormField
               control={form.control}
@@ -527,7 +544,7 @@ export function ProfileSettings() {
               )}
             />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <FormField
                 control={form.control}
                 name="experienceYears"
@@ -543,9 +560,9 @@ export function ProfileSettings() {
                     <FormMessage />
                   </FormItem>
                 )}
-              />
+              /> */}
 
-              <FormField
+            {/* <FormField
                 control={form.control}
                 name="consultationFee"
                 render={({ field }) => (
@@ -565,8 +582,8 @@ export function ProfileSettings() {
                     <FormMessage />
                   </FormItem>
                 )}
-              />
-            </div>
+              /> */}
+            {/* </div> */}
 
             <FormField
               control={form.control}

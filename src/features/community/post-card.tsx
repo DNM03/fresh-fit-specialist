@@ -247,7 +247,7 @@ export function PostCard({
                       >
                         <div className="flex justify-between items-start">
                           <p className="text-sm text-red-700">
-                            {feedback.comment}
+                            {index + 1}. {feedback.comment}
                           </p>
                           {feedback.created_at && (
                             <span className="text-xs text-red-400 ml-2">
