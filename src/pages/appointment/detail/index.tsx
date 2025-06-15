@@ -347,6 +347,10 @@ export default function AppointmentDetail() {
 
     const nowIso = `${nowLocalDate}T${nowLocalTime}.000Z`;
 
+    console.log("nowIso", nowIso);
+    console.log("startTime", startTime.toISOString());
+    console.log("isAppointmentInFuture", nowIso < startTime.toISOString());
+
     return nowIso < startTime.toISOString();
   };
 
@@ -365,7 +369,7 @@ export default function AppointmentDetail() {
   // Return appropriate message based on appointment timing
   const getTimingMessage = (appointment: AppointmentDetail) => {
     if (isAppointmentInFuture(appointment)) {
-      return "Session cannot be started yet. You can start the session 5 minutes after the scheduled start time.";
+      return "Session cannot be started yet. You can start the session at the scheduled start time.";
     } else if (isAppointmentExpired(appointment)) {
       return "This appointment has expired and no actions are available.";
     } else if (!isToday(parseISO(appointment.date))) {
