@@ -121,6 +121,8 @@ export default function AppointmentDetail() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [myProfile, setMyProfile] = useState<any>(null);
   const [confirmEndSession, setConfirmEndSession] = useState(false);
+  // Add new state for session notes
+  const [sessionNotes, setSessionNotes] = useState("");
 
   useEffect(() => {
     const fetchAppointmentDetails = async () => {
@@ -189,7 +191,11 @@ export default function AppointmentDetail() {
   const handleEndSession = async () => {
     try {
       setIsSubmitting(true);
+      // Update API call to include session notes
       await specialistService.updateAppointmentStatus(id!, "COMPLETED");
+      await specialistService.addNote(id!, {
+        note: sessionNotes,
+      });
       toast.success("Session completed successfully", {
         style: {
           background: "#3ac76b",
@@ -200,6 +206,8 @@ export default function AppointmentDetail() {
       const response = await specialistService.getAppointmentById(id!);
       setAppointment(response.data.data.appointment.appointment);
       setConfirmEndSession(false);
+      // Reset session notes
+      setSessionNotes("");
     } catch (error) {
       console.error("Error ending session:", error);
       toast.error("Failed to end session", {
@@ -817,7 +825,7 @@ export default function AppointmentDetail() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* End Session Confirmation Dialog */}
+      {/* End Session Confirmation Dialog - Modified to include notes field */}
       <AlertDialog open={confirmEndSession} onOpenChange={setConfirmEndSession}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -828,13 +836,35 @@ export default function AppointmentDetail() {
               session has ended.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="py-2">
+            <label
+              htmlFor="session-notes"
+              className="block text-sm font-medium mb-1"
+            >
+              Session Notes
+            </label>
+            <p className="text-xs text-muted-foreground mb-2">
+              Please provide any notes or recommendations from this session.
+              These will be visible to the patient.
+            </p>
+            <textarea
+              id="session-notes"
+              value={sessionNotes}
+              onChange={(e) => setSessionNotes(e.target.value)}
+              className="w-full border rounded-md p-2 h-24 text-sm"
+              placeholder="Example: We discussed nutrition adjustments and recommended continuing with the current exercise routine for another two weeks."
+            />
+          </div>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setSessionNotes("")}>
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               className="bg-yellow-600 hover:bg-yellow-700"
               onClick={handleEndSession}
+              disabled={isSubmitting}
             >
-              End Session
+              {isSubmitting ? "Ending Session..." : "End Session"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
