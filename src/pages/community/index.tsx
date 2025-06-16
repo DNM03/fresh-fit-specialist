@@ -23,6 +23,21 @@ export default function CommunityPage() {
   const observerTarget = useRef(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+  const [myProfile, setMyProfile] = useState<any>(null);
+
+  const fetchMyProfile = async () => {
+    try {
+      const response = await userService.getCurrentUser();
+      if (response.data) {
+        setMyProfile(response.data.result);
+      }
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+    }
+  };
+  useEffect(() => {
+    fetchMyProfile();
+  }, []);
 
   const fetchPosts = async (resetPage = false, searchTerm = searchQuery) => {
     if ((loading || !hasMore) && !resetPage) return;
@@ -219,6 +234,57 @@ export default function CommunityPage() {
     setPage(1);
     fetchPosts(true);
   };
+  const handleLikePost = async (postId: string, current_user_react: any) => {
+    try {
+      let res = null;
+      if (current_user_react === null)
+        res = await postService.reactPost(postId, myProfile?._id, "Like");
+      else
+        res = await postService.deletePostReaction(
+          postId,
+          current_user_react._id
+        );
+
+      setPosts((currentPosts) =>
+        currentPosts.map((post) => {
+          if (post._id === postId) {
+            if (post.reactions.current_user_react !== null) {
+              return {
+                ...post,
+                reactions: {
+                  ...post.reactions,
+                  current_user_react: null,
+                  Like: post.reactions.Like - 1,
+                },
+              };
+            } else {
+              return {
+                ...post,
+                reactions: {
+                  ...post.reactions,
+                  current_user_react: {
+                    user_id: myProfile?._id,
+                    reaction: "Like",
+                    _id: res.data.reaction._id,
+                  },
+                  Like: post.reactions.Like + 1,
+                },
+              };
+            }
+          }
+          return post;
+        })
+      );
+    } catch (error) {
+      console.error("Error liking post:", error);
+      toast.error("Failed to like post", {
+        style: {
+          background: "#ff4d4f",
+          color: "#fff",
+        },
+      });
+    }
+  };
 
   const handleDeletePost = async (postId: string) => {
     try {
@@ -308,6 +374,7 @@ export default function CommunityPage() {
               activeFilter={activeFilter}
               onDeletePost={handleDeletePost}
               onEditPost={handleEditPost}
+              onLikePost={handleLikePost} // Pass the like handler
             />
           ))}
           <div ref={observerTarget} className="h-10" />
