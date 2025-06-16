@@ -15,7 +15,6 @@ import { Eye, EyeOff } from "lucide-react"; // Import the eye icons
 function LoginPage() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
-  const [_error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false); // Add state for password visibility
 
   const {
@@ -59,20 +58,26 @@ function LoginPage() {
       });
       navigate("/");
     } catch (error: any) {
+      let errorMsg = "Email or password is incorrect. Please try again.";
       if (error.response?.status === 401) {
-        setError("Invalid email or password");
+        errorMsg = "Email or password is incorrect. Please try again.";
       } else if (error.response?.status === 429) {
-        setError("Too many attempts. Please try again later.");
+        errorMsg = "Too many attempts. Please try again later.";
+      } else if (error.response?.status === 403) {
+        errorMsg = "This account is banned. Please contact support.";
       } else {
-        setError("An error occurred. Please try again.");
+        errorMsg = "An unexpected error occurred. Please try again later.";
       }
-      console.error("Login error:", error);
-      toast.error("Email or password is incorrect. Please try again.", {
-        style: {
-          background: "#cc3131",
-          color: "#fff",
-        },
-      });
+      console.error("Login error:", error.response?.status);
+      toast.error(
+        errorMsg || "Email or password is incorrect. Please try again.",
+        {
+          style: {
+            background: "#cc3131",
+            color: "#fff",
+          },
+        }
+      );
     } finally {
       setIsLoading(false);
     }
