@@ -46,6 +46,7 @@ interface PostCardProps {
   activeFilter?: string;
   onDeletePost?: (postId: string) => void;
   onEditPost?: (post: any) => void;
+  onLikePost?: (postId: string, current_user_react: any) => void;
 }
 
 // Character limit for the collapsed content view
@@ -57,6 +58,7 @@ export function PostCard({
   activeFilter = "all",
   onDeletePost,
   onEditPost,
+  onLikePost,
 }: PostCardProps) {
   // Add state to track if content is expanded
   const [isExpanded, setIsExpanded] = useState(false);
@@ -364,10 +366,24 @@ export function PostCard({
 
         <CardFooter className="border-t pt-3 flex justify-between">
           <div className="flex space-x-4">
-            <div className={`flex items-center gap-1 text-red-500`}>
-              <Heart className={`h-4 w-4 fill-current`} />
+            <button
+              className={`flex items-center gap-1 hover:cursor-pointer ${
+                post.reactions.current_user_react ? "text-red-500" : ""
+              }`}
+              onClick={() => {
+                if (onLikePost) {
+                  onLikePost(post._id, post.reactions.current_user_react);
+                }
+              }}
+              disabled={post.status !== "Published"}
+            >
+              <Heart
+                className={`h-4 w-4 ${
+                  post.reactions.current_user_react ? "fill-current" : ""
+                }`}
+              />
               <span>{post.reactions ? post.reactions.Like : ""}</span>
-            </div>
+            </button>
           </div>
         </CardFooter>
       </Card>

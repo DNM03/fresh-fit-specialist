@@ -79,6 +79,14 @@ class PostService {
   updatePost(id: string, post: any): Promise<AxiosResponse> {
     return apiService.patch<AxiosResponse>(`/posts/${id}`, post);
   }
+  deletePostReaction(
+    postId: string,
+    reactionId: string
+  ): Promise<AxiosResponse> {
+    return apiService.delete<AxiosResponse>(
+      `/posts/${postId}/reactions/${reactionId}`
+    );
+  }
 }
 
 const postService = new PostService();
