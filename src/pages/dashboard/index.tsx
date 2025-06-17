@@ -67,8 +67,8 @@ interface AppointmentSlot {
 interface Statistics {
   totalYesterDayAppointments: number;
   totalTodayAppointments: number;
-  totalPendingAppointmentsLastMonth: number;
-  totalPendingAppointmentsThisMonth: number;
+  totalConfirmedAppointmentsLastMonth: number;
+  totalConfirmedAppointmentsThisMonth: number;
   totalPatientsLastMonth: number;
   totalPatientsThisMonth: number;
   totalCompleteAppointmentsLastMonth: number;
@@ -82,8 +82,8 @@ export default function Dashboard() {
   const [statistics, setStatistics] = useState<Statistics>({
     totalYesterDayAppointments: 0,
     totalTodayAppointments: 0,
-    totalPendingAppointmentsLastMonth: 0,
-    totalPendingAppointmentsThisMonth: 0,
+    totalConfirmedAppointmentsLastMonth: 0,
+    totalConfirmedAppointmentsThisMonth: 0,
     totalPatientsLastMonth: 0,
     totalPatientsThisMonth: 0,
     totalCompleteAppointmentsLastMonth: 0,
@@ -245,16 +245,16 @@ export default function Dashboard() {
       ),
     },
     {
-      title: "Pending Appointments",
-      value: statistics.totalPendingAppointmentsThisMonth,
+      title: "Confirmed Appointments",
+      value: statistics.totalConfirmedAppointmentsThisMonth,
       icon: <Clock className="h-5 w-5 text-amber-500" />,
       change: `${calculateChange(
-        statistics.totalPendingAppointmentsThisMonth,
-        statistics.totalPendingAppointmentsLastMonth
+        statistics.totalConfirmedAppointmentsThisMonth,
+        statistics.totalConfirmedAppointmentsLastMonth
       )} from last month`,
       trend: calculateTrend(
-        statistics.totalPendingAppointmentsThisMonth,
-        statistics.totalPendingAppointmentsLastMonth
+        statistics.totalConfirmedAppointmentsThisMonth,
+        statistics.totalConfirmedAppointmentsLastMonth
       ),
     },
     {
@@ -277,7 +277,7 @@ export default function Dashboard() {
           ? `${Math.round(
               (statistics.totalCompleteAppointmentsThisMonth /
                 (statistics.totalCompleteAppointmentsThisMonth +
-                  statistics.totalPendingAppointmentsThisMonth)) *
+                  statistics.totalConfirmedAppointmentsThisMonth)) *
                 100
             )}%`
           : "0%",
