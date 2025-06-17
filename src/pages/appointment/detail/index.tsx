@@ -420,7 +420,7 @@ export default function AppointmentDetail() {
           <CardHeader>
             <div className="flex justify-between items-center">
               <CardTitle className="text-red-600">Error</CardTitle>
-              <Button variant="ghost" onClick={() => navigate("/appointments")}>
+              <Button variant="ghost" onClick={() => navigate(-1)}>
                 <ArrowLeft className="h-4 w-4 mr-2" /> Back to Appointments
               </Button>
             </div>
@@ -429,9 +429,7 @@ export default function AppointmentDetail() {
             <p>{error || "Appointment not found"}</p>
           </CardContent>
           <CardFooter>
-            <Button onClick={() => navigate("/appointments")}>
-              Return to Appointments
-            </Button>
+            <Button onClick={() => navigate(-1)}>Return to Appointments</Button>
           </CardFooter>
         </Card>
       </div>
@@ -441,7 +439,7 @@ export default function AppointmentDetail() {
   return (
     <div className="container mx-auto py-6 px-4">
       <div className="flex items-center mb-6">
-        <Button variant="ghost" onClick={() => navigate("/appointments")}>
+        <Button variant="ghost" onClick={() => navigate(-1)}>
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Appointments
         </Button>

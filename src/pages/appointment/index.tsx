@@ -18,11 +18,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
+// import { Input } from "@/components/ui/input";
 import {
   Calendar,
   Clock,
-  Search,
+  // Search,
   ChevronLeft,
   ChevronRight,
   Phone,
@@ -51,36 +51,38 @@ function formatDateTime(
   }
 }
 
-interface AppointmentSlot {
+// Updated interface to match new API structure
+interface Appointment {
   id: string;
   date: string;
   startTime: string;
   endTime: string;
-  isAvailable: boolean;
-  appointment: {
+  status: string;
+  type: string;
+  userId: string;
+  expert?: {
     id: string;
-    status: string;
-    meetingLink: string | null;
-    paymentStatus: string;
-    issues: string;
-    notes: string;
-    fees: number;
-    cancellationReason: string | null;
-    type: string;
-    user: {
-      _id: string;
-      fullName: string;
-      email: string;
-      gender: number;
-      username: string;
-      avatar: string;
-    };
+    fullName: string;
+    gender: string;
+    username: string;
+    avatar: string;
+    experience_years: number;
+    rating: number;
   };
-}
-
-interface DateAvailability {
-  date: string;
-  slots: AppointmentSlot[];
+  user?: {
+    id: string;
+    fullName: string;
+    gender: string;
+    username: string;
+    email: string;
+    avatar: string;
+  };
+  meetingLink?: string | null;
+  paymentStatus?: string;
+  issues?: string;
+  notes?: string;
+  fees?: number;
+  cancellationReason?: string | null;
 }
 
 function isSameDate(isoString1: string, isoString2: string) {
@@ -96,10 +98,9 @@ export default function Appointment() {
   );
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [searchQuery, setSearchQuery] = useState("");
+  // const [searchQuery, setSearchQuery] = useState("");
 
-  const [, setDateAvailabilities] = useState<DateAvailability[]>([]);
-  const [appointments, setAppointments] = useState<AppointmentSlot[]>([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [specialist, setSpecialist] = useState<any>();
 
   useEffect(() => {
@@ -116,44 +117,28 @@ export default function Appointment() {
   }, []);
 
   useEffect(() => {
-    const fetchAvailabilities = async () => {
+    const fetchAppointments = async () => {
       if (!specialist?.id) return;
 
       try {
-        const response = await specialistService.getSpecialistAvailableSlots({
+        // Update this call to match your new API endpoint for appointments
+        const response = await specialistService.getAppointmentsBySpecialistId({
           specialistId: specialist.id,
           month: currentMonth.getMonth() + 1,
           year: currentMonth.getFullYear(),
+          page: 1,
+          limit: 300, // Adjust limit as needed
         });
 
-        // Store all date availabilities
-        const availabilities = response.data.data.availabilities || [];
-        setDateAvailabilities(availabilities);
-
-        // Extract only slots with appointments (booked slots)
-        const bookedAppointments: AppointmentSlot[] = [];
-
-        availabilities.forEach((dateAvail: DateAvailability) => {
-          if (dateAvail.slots && dateAvail.slots.length > 0) {
-            const bookedSlots = dateAvail.slots.filter(
-              (slot) => slot.appointment !== null
-            );
-
-            if (bookedSlots.length > 0) {
-              bookedAppointments.push(...bookedSlots);
-            }
-          }
-        });
-
-        console.log("Booked appointments:", bookedAppointments);
-        setAppointments(bookedAppointments);
+        // Set appointments directly from the response
+        setAppointments(response.data.data.appointments || []);
       } catch (error) {
-        console.error("Error fetching availabilities:", error);
+        console.error("Error fetching appointments:", error);
       }
     };
 
     if (specialist) {
-      fetchAvailabilities();
+      fetchAppointments();
     }
   }, [specialist, currentMonth]);
 
@@ -166,6 +151,8 @@ export default function Appointment() {
       case "CANCELLED":
         return "bg-red-100 text-red-800";
       case "RESCHEDULED":
+        return "bg-blue-100 text-blue-800";
+      case "COMPLETED":
         return "bg-blue-100 text-blue-800";
       default:
         return "bg-gray-100 text-gray-800";
@@ -184,21 +171,19 @@ export default function Appointment() {
   };
 
   const filteredAppointments = appointments.filter((appointment) => {
-    const matchesSearch =
-      appointment.appointment?.user?.fullName
-        ?.toLowerCase()
-        ?.includes(searchQuery.toLowerCase()) ||
-      appointment.appointment?.user?.email
-        ?.toLowerCase()
-        ?.includes(searchQuery.toLowerCase()) ||
-      false;
+    // const matchesSearch =
+    //   appointment.user?.fullName
+    //     ?.toLowerCase()
+    //     ?.includes(searchQuery.toLowerCase()) ||
+    //   appointment.user?.email
+    //     ?.toLowerCase()
+    //     ?.includes(searchQuery.toLowerCase()) ||
+    //   false;
 
-    const appointmentStatus = appointment.appointment?.status || "";
+    const appointmentStatus = appointment.status || "";
     const matchesStatus =
       statusFilter === "all" ||
       appointmentStatus.toLowerCase() === statusFilter.toLowerCase();
-
-    console.log(appointment.startTime, "->", selectedDate?.toISOString());
 
     let comparisonDate = selectedDate;
     if (selectedDate) {
@@ -211,13 +196,11 @@ export default function Appointment() {
         ? isSameDate(appointment.startTime, comparisonDate.toISOString())
         : true;
 
-    return matchesSearch && matchesStatus && matchesDate;
+    return matchesStatus && matchesDate;
   });
 
-  console.log("Filtered appointments:", filteredAppointments);
-
   const groupedAppointments = filteredAppointments.reduce(
-    (acc: Record<string, AppointmentSlot[]>, appointment) => {
+    (acc: Record<string, Appointment[]>, appointment) => {
       const dateKey = format(parseISO(appointment.startTime), "yyyy-MM-dd");
       if (!acc[dateKey]) {
         acc[dateKey] = [];
@@ -390,7 +373,7 @@ export default function Appointment() {
                 </div>
 
                 <div className="flex flex-col md:flex-row gap-2">
-                  <div className="relative">
+                  {/* <div className="relative">
                     <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
                       placeholder="Search patients..."
@@ -398,7 +381,7 @@ export default function Appointment() {
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                     />
-                  </div>
+                  </div> */}
 
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
                     <SelectTrigger className="w-full md:w-[180px]">
@@ -423,43 +406,29 @@ export default function Appointment() {
 
                 <TabsContent value="list" className="space-y-4">
                   {filteredAppointments.length > 0 ? (
-                    filteredAppointments.map((slot) => (
+                    filteredAppointments.map((appointment) => (
                       <div
-                        key={slot.id}
+                        key={appointment.id}
                         className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
                       >
                         <div className="flex items-center">
-                          <Avatar className="h-10 w-10 mr-3">
-                            <AvatarImage
-                              src={
-                                slot.appointment?.user?.avatar ||
-                                "/placeholder.svg"
-                              }
-                              alt={
-                                slot.appointment?.user?.fullName || "Patient"
-                              }
-                            />
-                            <AvatarFallback>
-                              {slot.appointment?.user?.fullName
-                                ?.split(" ")
-                                ?.map((n) => n[0])
-                                ?.join("") || "P"}
-                            </AvatarFallback>
-                          </Avatar>
                           <div>
                             <p className="font-medium">
-                              {slot.appointment?.user?.fullName ||
-                                "Unknown Patient"}
+                              {appointment.user?.fullName ||
+                                "User " + appointment.userId.slice(-4)}
                             </p>
                             <div className="flex items-center text-sm text-gray-500">
                               <Clock className="h-3 w-3 mr-1" />
-                              {formatDateTime(slot.startTime, "h:mm a")} -{" "}
-                              {formatDateTime(slot.endTime, "h:mm a")}
+                              {formatDateTime(
+                                appointment.startTime,
+                                "h:mm a"
+                              )}{" "}
+                              - {formatDateTime(appointment.endTime, "h:mm a")}
                               <span className="mx-2">•</span>
                               <div className="flex items-center gap-1">
-                                {getAppointmentIcon(slot.appointment?.type)}
+                                {getAppointmentIcon(appointment.type)}
                                 <span>
-                                  {slot.appointment?.type || "Consultation"}
+                                  {appointment.type || "Consultation"}
                                 </span>
                               </div>
                             </div>
@@ -467,18 +436,18 @@ export default function Appointment() {
                         </div>
                         <div className="flex items-center">
                           <Badge
-                            className={getStatusColor(slot.appointment?.status)}
+                            className={getStatusColor(appointment.status)}
                             variant="outline"
                           >
-                            {(slot.appointment?.status || "PENDING")
+                            {(appointment.status || "PENDING")
                               .charAt(0)
                               .toUpperCase() +
-                              (slot.appointment?.status || "PENDING")
+                              (appointment.status || "PENDING")
                                 .slice(1)
                                 .toLowerCase()}
                           </Badge>
                           <div className="flex ml-4">
-                            <Link to={`/appointments/${slot.appointment.id}`}>
+                            <Link to={`/appointments/${appointment.id}`}>
                               <Button variant="outline" size="sm">
                                 View Details
                               </Button>
@@ -500,7 +469,7 @@ export default function Appointment() {
                           setSelectedDate(today);
                           setCurrentMonth(today);
                           setStatusFilter("all");
-                          setSearchQuery("");
+                          // setSearchQuery("");
                         }}
                       >
                         Reset Filters
@@ -525,116 +494,113 @@ export default function Appointment() {
                           <div className="relative">
                             <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200"></div>
                             <div className="space-y-8 pl-8">
-                              {groupedAppointments[dateKey].map((slot) => (
-                                <div key={slot.id} className="relative">
-                                  {/* <div className="absolute -left-4 top-1 w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                                    {getAppointmentIcon(slot.appointment?.type)}
-                                  </div> */}
-                                  <div className="p-4 border rounded-lg hover:bg-gray-50">
-                                    <div className="flex justify-between items-start">
-                                      <div>
-                                        <p className="font-medium text-blue-600">
-                                          {formatDateTime(
-                                            slot.startTime,
-                                            "h:mm a"
-                                          )}{" "}
-                                          -{" "}
-                                          {formatDateTime(
-                                            slot.endTime,
-                                            "h:mm a"
-                                          )}
-                                        </p>
-                                        <div className="flex items-center gap-2 mt-1">
-                                          <Avatar className="h-6 w-6">
-                                            <AvatarImage
-                                              src={
-                                                slot.appointment?.user
-                                                  ?.avatar || "/placeholder.svg"
-                                              }
-                                            />
-                                            <AvatarFallback>
-                                              {slot.appointment?.user?.fullName?.charAt(
-                                                0
-                                              ) || "P"}
-                                            </AvatarFallback>
-                                          </Avatar>
-                                          <p className="font-medium">
-                                            {slot.appointment?.user?.fullName ||
-                                              "Unknown Patient"}
+                              {groupedAppointments[dateKey].map(
+                                (appointment) => (
+                                  <div
+                                    key={appointment.id}
+                                    className="relative"
+                                  >
+                                    <div className="p-4 border rounded-lg hover:bg-gray-50">
+                                      <div className="flex justify-between items-start">
+                                        <div>
+                                          <p className="font-medium text-blue-600">
+                                            {formatDateTime(
+                                              appointment.startTime,
+                                              "h:mm a"
+                                            )}{" "}
+                                            -{" "}
+                                            {formatDateTime(
+                                              appointment.endTime,
+                                              "h:mm a"
+                                            )}
                                           </p>
+                                          <div className="flex items-center gap-2 mt-1">
+                                            <Avatar className="h-6 w-6">
+                                              <AvatarImage
+                                                src={
+                                                  appointment.user?.avatar ||
+                                                  "/placeholder.svg"
+                                                }
+                                              />
+                                              <AvatarFallback>
+                                                {appointment.user?.fullName?.charAt(
+                                                  0
+                                                ) || "P"}
+                                              </AvatarFallback>
+                                            </Avatar>
+                                            <p className="font-medium">
+                                              {appointment.user?.fullName ||
+                                                "User " +
+                                                  appointment.userId.slice(-4)}
+                                            </p>
+                                          </div>
+                                          <p className="text-sm text-gray-500 mt-1">
+                                            Email:{" "}
+                                            {appointment.user?.email || "N/A"}
+                                          </p>
+                                          {appointment.issues && (
+                                            <div className="mt-2">
+                                              <p className="text-sm text-gray-700 font-medium">
+                                                Issues:
+                                              </p>
+                                              <p className="text-sm text-gray-600">
+                                                {appointment.issues}
+                                              </p>
+                                            </div>
+                                          )}
+                                          {appointment.notes && (
+                                            <div className="mt-2">
+                                              <p className="text-sm text-gray-700 font-medium">
+                                                Notes:
+                                              </p>
+                                              <p className="text-sm text-gray-600">
+                                                {appointment.notes}
+                                              </p>
+                                            </div>
+                                          )}
                                         </div>
-                                        <p className="text-sm text-gray-500 mt-1">
-                                          Email:{" "}
-                                          {slot.appointment?.user?.email ||
-                                            "N/A"}
-                                        </p>
-                                        {slot.appointment?.issues && (
-                                          <div className="mt-2">
-                                            <p className="text-sm text-gray-700 font-medium">
-                                              Issues:
-                                            </p>
-                                            <p className="text-sm text-gray-600">
-                                              {slot.appointment.issues}
-                                            </p>
-                                          </div>
-                                        )}
-                                        {slot.appointment?.notes && (
-                                          <div className="mt-2">
-                                            <p className="text-sm text-gray-700 font-medium">
-                                              Notes:
-                                            </p>
-                                            <p className="text-sm text-gray-600">
-                                              {slot.appointment.notes}
-                                            </p>
-                                          </div>
-                                        )}
-                                      </div>
-                                      <div className="flex flex-col items-end">
-                                        <Badge
-                                          className={getStatusColor(
-                                            slot.appointment?.status
+                                        <div className="flex flex-col items-end">
+                                          <Badge
+                                            className={getStatusColor(
+                                              appointment.status
+                                            )}
+                                            variant="outline"
+                                          >
+                                            {(appointment.status || "PENDING")
+                                              .charAt(0)
+                                              .toUpperCase() +
+                                              (appointment.status || "PENDING")
+                                                .slice(1)
+                                                .toLowerCase()}
+                                          </Badge>
+                                          {appointment.paymentStatus && (
+                                            <Badge
+                                              className="mt-2 bg-green-50 text-green-700"
+                                              variant="outline"
+                                            >
+                                              {appointment.paymentStatus}
+                                            </Badge>
                                           )}
-                                          variant="outline"
-                                        >
-                                          {(
-                                            slot.appointment?.status ||
-                                            "PENDING"
-                                          )
-                                            .charAt(0)
-                                            .toUpperCase() +
-                                            (
-                                              slot.appointment?.status ||
-                                              "PENDING"
-                                            )
-                                              .slice(1)
-                                              .toLowerCase()}
-                                        </Badge>
-                                        <Badge
-                                          className="mt-2 bg-green-50 text-green-700"
-                                          variant="outline"
-                                        >
-                                          {slot.appointment?.paymentStatus ||
-                                            "UNPAID"}
-                                        </Badge>
-                                        {slot.appointment?.fees && (
-                                          <p className="text-sm font-medium mt-2">
-                                            ${slot.appointment.fees}
-                                          </p>
-                                        )}
+                                          {appointment.fees && (
+                                            <p className="text-sm font-medium mt-2">
+                                              ${appointment.fees}
+                                            </p>
+                                          )}
+                                        </div>
                                       </div>
-                                    </div>
-                                    <div className="flex mt-4">
-                                      <Link
-                                        to={`/appointments/${slot.appointment.id}`}
-                                      >
-                                        <Button variant="outline" size="sm">
-                                          View Details
-                                        </Button>
-                                      </Link>
+                                      <div className="flex mt-4">
+                                        <Link
+                                          to={`/appointments/${appointment.id}`}
+                                        >
+                                          <Button variant="outline" size="sm">
+                                            View Details
+                                          </Button>
+                                        </Link>
+                                      </div>
                                     </div>
                                   </div>
-                                </div>
-                              ))}
+                                )
+                              )}
                             </div>
                           </div>
                         </div>
@@ -652,7 +618,7 @@ export default function Appointment() {
                             setSelectedDate(today);
                             setCurrentMonth(today);
                             setStatusFilter("all");
-                            setSearchQuery("");
+                            // setSearchQuery("");
                           }}
                         >
                           Reset Filters
