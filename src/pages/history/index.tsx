@@ -8,9 +8,16 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+// import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+// import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import {
   Popover,
@@ -19,7 +26,7 @@ import {
 } from "@/components/ui/popover";
 import {
   CalendarIcon,
-  Search,
+  // Search,
   Clock,
   Phone,
   Video,
@@ -28,65 +35,77 @@ import {
   Star,
   ChevronRight,
   Users,
+  FilterIcon,
 } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
-import { format, parseISO, isSameMonth, addMonths, subMonths } from "date-fns";
+import { format, isSameMonth, addMonths, subMonths } from "date-fns";
 import { Link } from "react-router-dom";
 import specialistService from "@/services/specialist.service";
 
 // Helper function to format date-time
-function formatDateTime(isoString: string, formatStr: string = "PPpp"): string {
+function formatDateTime(
+  dateString: string,
+  formatStr: string = "PPpp"
+): string {
   try {
-    return format(parseISO(isoString), formatStr);
+    const timeMatch = dateString.match(/(\d{2}):(\d{2}):(\d{2})/);
+    if (timeMatch) {
+      const [, hours, minutes] = timeMatch;
+      const today = new Date();
+      today.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+      return format(today, formatStr);
+    }
+    throw new Error("Time not found");
   } catch (error) {
     console.error("Invalid date format:", error);
     return "Invalid date";
   }
 }
 
-interface AppointmentSlot {
+// Updated interface to match new API structure
+interface Appointment {
   id: string;
   date: string;
   startTime: string;
   endTime: string;
-  isAvailable: boolean;
-  appointment: {
+  status: string;
+  type: string;
+  userId: string;
+  expert?: {
     id: string;
-    status: string;
-    meetingLink: string | null;
-    paymentStatus: string;
-    issues: string;
-    notes: string;
-    fees: number;
-    cancellationReason: string | null;
-    type: string;
-    expertReview?: {
-      rating: number;
-      comment: string;
-    } | null;
-    user: {
-      _id: string;
-      fullName: string;
-      email: string;
-      gender: number;
-      username: string;
-      avatar: string;
-    };
+    fullName: string;
+    gender: string;
+    username: string;
+    avatar: string;
+    experience_years: number;
+    rating: number;
   };
-}
-
-interface DateAvailability {
-  date: string;
-  slots: AppointmentSlot[];
+  user?: {
+    id: string;
+    fullName: string;
+    gender: string;
+    username: string;
+    email: string;
+    avatar: string;
+  };
+  meetingLink?: string | null;
+  paymentStatus?: string;
+  issues?: string;
+  notes?: string;
+  fees?: number;
+  cancellationReason?: string | null;
+  expertReview?: {
+    rating: number;
+    comment: string;
+  } | null;
 }
 
 export default function History() {
   const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
-  const [searchQuery, setSearchQuery] = useState("");
+  // const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [specialist, setSpecialist] = useState<any>();
-  const [completedAppointments, setCompletedAppointments] = useState<
-    AppointmentSlot[]
-  >([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalEarnings, setTotalEarnings] = useState(0);
   const [totalAppointments, setTotalAppointments] = useState(0);
@@ -113,47 +132,31 @@ export default function History() {
 
       setLoading(true);
       try {
-        const response = await specialistService.getSpecialistAvailableSlots({
+        const response = await specialistService.getAppointmentsBySpecialistId({
           specialistId: specialist.id,
           month: selectedMonth.getMonth() + 1,
           year: selectedMonth.getFullYear(),
+          page: 1,
+          limit: 300, // Adjust limit as needed
         });
 
-        const availabilities = response.data.data.availabilities || [];
-        const completedSlots: AppointmentSlot[] = [];
+        // Get appointments directly from the response
+        const appointments = response.data.data.appointments || [];
+
+        // Calculate totals
         let monthlyEarnings = 0;
-        let ratingSum = 0;
-        let ratingCount = 0;
+        let completedCount = 0;
 
-        availabilities.forEach((dateAvail: DateAvailability) => {
-          if (dateAvail.slots && dateAvail.slots.length > 0) {
-            const completedSlotsForDate = dateAvail.slots.filter(
-              (slot) =>
-                slot.appointment !== null &&
-                slot.appointment.status.toUpperCase() === "COMPLETED"
-            );
-
-            if (completedSlotsForDate.length > 0) {
-              completedSlots.push(...completedSlotsForDate);
-
-              completedSlotsForDate.forEach((slot) => {
-                if (slot.appointment?.fees) {
-                  monthlyEarnings += slot.appointment.fees;
-                }
-
-                if (slot.appointment?.expertReview?.rating) {
-                  ratingSum += slot.appointment.expertReview.rating;
-                  ratingCount++;
-                }
-              });
-            }
+        appointments.forEach((appointment: Appointment) => {
+          if (appointment.status === "COMPLETED") {
+            monthlyEarnings += 200000;
+            completedCount++;
           }
         });
 
-        setCompletedAppointments(completedSlots);
-        setTotalAppointments(completedSlots.length);
+        setAppointments(appointments);
+        setTotalAppointments(appointments.length);
         setTotalEarnings(monthlyEarnings);
-        // setAverageRating(ratingCount > 0 ? ratingSum / ratingCount : 0);
       } catch (error) {
         console.error("Error fetching appointment history:", error);
       } finally {
@@ -177,18 +180,22 @@ export default function History() {
     }
   };
 
-  const filteredAppointments = completedAppointments.filter((slot) => {
-    const matchesSearch =
-      slot.appointment?.user?.fullName
-        ?.toLowerCase()
-        ?.includes(searchQuery.toLowerCase()) ||
-      slot.appointment?.user?.email
-        ?.toLowerCase()
-        ?.includes(searchQuery.toLowerCase()) ||
-      false;
-
-    return matchesSearch;
-  });
+  const getStatusColor = (status: string) => {
+    switch (status?.toUpperCase()) {
+      case "CONFIRMED":
+        return "bg-green-100 text-green-800";
+      case "PENDING":
+        return "bg-amber-100 text-amber-800";
+      case "CANCELLED":
+        return "bg-red-100 text-red-800";
+      case "RESCHEDULED":
+        return "bg-blue-100 text-blue-800";
+      case "COMPLETED":
+        return "bg-blue-100 text-blue-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
+  };
 
   const handlePrevMonth = () => {
     setSelectedMonth((prevMonth) => subMonths(prevMonth, 1));
@@ -197,6 +204,11 @@ export default function History() {
   const handleNextMonth = () => {
     setSelectedMonth((prevMonth) => addMonths(prevMonth, 1));
   };
+
+  // Filter appointments based on status
+  const filteredAppointments = appointments.filter((appointment) => {
+    return statusFilter === "all" || appointment.status?.toUpperCase() === statusFilter;
+  });
 
   return (
     <div className="container mx-auto py-6 px-4">
@@ -225,9 +237,11 @@ export default function History() {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Total Earnings</CardDescription>
+            <CardDescription>Total Earnings (F2Coin)</CardDescription>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-2xl">${totalEarnings}</CardTitle>
+              <CardTitle className="text-2xl">
+                {totalEarnings.toLocaleString()}
+              </CardTitle>
               <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
                 <FileText className="h-4 w-4 text-green-600" />
               </div>
@@ -324,14 +338,20 @@ export default function History() {
               </Button>
             </div>
 
-            <div className="relative">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search patients..."
-                className="pl-8 w-full md:w-[250px]"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+            {/* Status Filter */}
+            <div className="flex items-center">
+              <FilterIcon className="h-4 w-4 mr-2 text-gray-500" />
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="CONFIRMED">Confirmed</SelectItem>
+                  <SelectItem value="COMPLETED">Completed</SelectItem>
+                  <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </CardHeader>
@@ -340,9 +360,15 @@ export default function History() {
       {/* Appointment List */}
       <Card>
         <CardHeader>
-          <CardTitle>Completed Appointments</CardTitle>
+          <CardTitle>
+            {statusFilter === "all" 
+              ? "All Appointments" 
+              : `${statusFilter.charAt(0) + statusFilter.slice(1).toLowerCase()} Appointments`}
+          </CardTitle>
           <CardDescription>
-            {filteredAppointments.length} completed consultations found
+            {filteredAppointments.length} {statusFilter !== "all" 
+              ? statusFilter.toLowerCase() 
+              : ""} appointments found
           </CardDescription>
         </CardHeader>
 
@@ -356,43 +382,31 @@ export default function History() {
             </div>
           ) : filteredAppointments.length > 0 ? (
             <div className="space-y-4">
-              {filteredAppointments.map((slot) => (
+              {filteredAppointments.map((appointment) => (
                 <div
-                  key={slot.id}
+                  key={appointment.id}
                   className="border rounded-lg overflow-hidden"
                 >
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between p-4">
                     <div className="flex items-center mb-4 md:mb-0">
-                      <Avatar className="h-12 w-12 mr-4">
-                        <AvatarImage
-                          src={
-                            slot.appointment?.user?.avatar || "/placeholder.svg"
-                          }
-                          alt={slot.appointment?.user?.fullName || "Patient"}
-                        />
-                        <AvatarFallback>
-                          {slot.appointment?.user?.fullName
-                            ?.split(" ")
-                            ?.map((n) => n[0])
-                            ?.join("") || "P"}
-                        </AvatarFallback>
-                      </Avatar>
-
                       <div>
                         <h3 className="font-medium">
-                          {slot.appointment?.user?.fullName ||
-                            "Unknown Patient"}
+                          {appointment.user?.fullName ||
+                            "User " + appointment.userId.slice(-4)}
                         </h3>
                         <div className="flex items-center text-sm text-gray-500">
                           <CalendarIcon2 className="h-3 w-3 mr-1" />
                           <span>
-                            {formatDateTime(slot.startTime, "MMMM d, yyyy")}
+                            {formatDateTime(
+                              appointment.startTime,
+                              "MMMM d, yyyy"
+                            )}
                           </span>
                           <span className="mx-1">•</span>
                           <Clock className="h-3 w-3 mr-1" />
                           <span>
-                            {formatDateTime(slot.startTime, "h:mm a")} -{" "}
-                            {formatDateTime(slot.endTime, "h:mm a")}
+                            {formatDateTime(appointment.startTime, "h:mm a")} -{" "}
+                            {formatDateTime(appointment.endTime, "h:mm a")}
                           </span>
                         </div>
                       </div>
@@ -400,23 +414,22 @@ export default function History() {
 
                     <div className="flex items-center justify-between md:justify-end w-full md:w-auto">
                       <div className="flex items-center mr-4">
-                        <div className="bg-blue-100 p-1 rounded-full mr-2">
-                          {getAppointmentIcon(slot.appointment?.type)}
+                        <div className="bg-blue-100 p-2 rounded-full mr-2">
+                          {getAppointmentIcon(appointment.type)}
                         </div>
                         <span className="text-sm font-medium capitalize">
-                          {slot.appointment?.type?.toLowerCase() ||
-                            "Consultation"}
+                          {appointment.type?.toLowerCase() || "Consultation"}
                         </span>
                       </div>
 
-                      {slot.appointment?.expertReview?.rating && (
+                      {appointment.expertReview?.rating && (
                         <div className="flex items-center mr-4">
                           <div className="flex">
                             {[1, 2, 3, 4, 5].map((star) => (
                               <Star
                                 key={star}
                                 className={`h-3 w-3 ${
-                                  star <= slot.appointment.expertReview!.rating
+                                  star <= appointment.expertReview!.rating
                                     ? "text-amber-500 fill-amber-500"
                                     : "text-gray-300"
                                 }`}
@@ -426,7 +439,7 @@ export default function History() {
                         </div>
                       )}
 
-                      <Link to={`/appointments/${slot.appointment.id}`}>
+                      <Link to={`/appointments/${appointment.id}`}>
                         <Button variant="ghost" size="sm" className="ml-2">
                           Details
                           <ChevronRight className="h-4 w-4 ml-1" />
@@ -436,26 +449,26 @@ export default function History() {
                   </div>
 
                   {/* Optional: Show notes or issues if they exist */}
-                  {(slot.appointment?.notes || slot.appointment?.issues) && (
+                  {(appointment.notes || appointment.issues) && (
                     <div className="px-4 py-3 border-t bg-gray-50">
                       <div className="text-sm">
-                        {slot.appointment?.issues && (
+                        {appointment.issues && (
                           <div className="mb-2">
                             <span className="font-medium text-gray-700">
                               Issues:
                             </span>{" "}
                             <span className="text-gray-600">
-                              {slot.appointment.issues}
+                              {appointment.issues}
                             </span>
                           </div>
                         )}
-                        {slot.appointment?.notes && (
+                        {appointment.notes && (
                           <div>
                             <span className="font-medium text-gray-700">
                               Notes:
                             </span>{" "}
                             <span className="text-gray-600">
-                              {slot.appointment.notes}
+                              {appointment.notes}
                             </span>
                           </div>
                         )}
@@ -467,14 +480,18 @@ export default function History() {
                   <div className="px-4 py-2 border-t bg-gray-50 flex justify-between items-center">
                     <div className="flex items-center">
                       <Badge
-                        className="bg-green-100 text-green-800 border-green-200"
+                        className={getStatusColor(appointment.status)}
                         variant="outline"
                       >
-                        {slot.appointment?.paymentStatus || "PAID"}
+                        {appointment.status || "CONFIRMED"}
                       </Badge>
                     </div>
                     <p className="text-sm font-medium">
-                      Fee: ${slot.appointment?.fees || 0}
+                      Fee:{" "}
+                      {appointment.status === "COMPLETED"
+                        ? (200000).toLocaleString()
+                        : 0}{" "}
+                      F2Coin
                     </p>
                   </div>
                 </div>
@@ -489,26 +506,35 @@ export default function History() {
                 No appointments found
               </h3>
               <p className="text-gray-500 mb-4">
-                There are no completed appointments for{" "}
-                {format(selectedMonth, "MMMM yyyy")}
+                {statusFilter !== "all" 
+                  ? `There are no ${statusFilter.toLowerCase()} appointments for ${format(selectedMonth, "MMMM yyyy")}`
+                  : `There are no appointments for ${format(selectedMonth, "MMMM yyyy")}`}
               </p>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setSelectedMonth(new Date());
-                  setSearchQuery("");
-                }}
-              >
-                Check current month
-              </Button>
+              <div className="flex justify-center gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedMonth(new Date());
+                  }}
+                >
+                  Check current month
+                </Button>
+                {statusFilter !== "all" && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setStatusFilter("all")}
+                  >
+                    View all statuses
+                  </Button>
+                )}
+              </div>
             </div>
           )}
         </CardContent>
 
         <CardFooter className="flex justify-between border-t pt-6">
           <p className="text-sm text-gray-500">
-            Showing {filteredAppointments.length} of{" "}
-            {completedAppointments.length} completed appointments
+            Showing {filteredAppointments.length} of {appointments.length} appointments
           </p>
         </CardFooter>
       </Card>
