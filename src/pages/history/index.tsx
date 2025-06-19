@@ -488,7 +488,7 @@ export default function History() {
                     </div>
                     <p className="text-sm font-medium">
                       Fee:{" "}
-                      {appointment.status === "COMPLETED"
+                      {(appointment.status === "COMPLETED" || appointment.status === "CONFIRMED")
                         ? (200000).toLocaleString()
                         : 0}{" "}
                       F2Coin
