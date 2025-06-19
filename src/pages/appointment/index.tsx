@@ -238,6 +238,25 @@ export default function Appointment() {
       }
     });
 
+  function isNearAppointment(appointmentStartTime: string): boolean {
+    try {
+      const now = new Date();
+      const appointmentTime = new Date(appointmentStartTime);
+      appointmentTime.setHours(appointmentTime.getHours() - 7);
+
+      console.log("Checking appointment time:", appointmentTime);
+      console.log("Current time:", now);
+
+      const timeDiff = appointmentTime.getTime() - now.getTime();
+
+      const minutesDiff = Math.floor(timeDiff / (1000 * 60));
+
+      return minutesDiff >= 0 && minutesDiff <= 30;
+    } catch (error) {
+      return false;
+    }
+  }
+
   return (
     <div className="container mx-auto py-6 px-4">
       <div className="flex justify-between items-center mb-6">
@@ -406,56 +425,69 @@ export default function Appointment() {
 
                 <TabsContent value="list" className="space-y-4">
                   {filteredAppointments.length > 0 ? (
-                    filteredAppointments.map((appointment) => (
-                      <div
-                        key={appointment.id}
-                        className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
-                      >
-                        <div className="flex items-center">
-                          <div>
-                            <p className="font-medium">
-                              {appointment.user?.fullName ||
-                                "User " + appointment.userId.slice(-4)}
-                            </p>
-                            <div className="flex items-center text-sm text-gray-500">
-                              <Clock className="h-3 w-3 mr-1" />
-                              {formatDateTime(
-                                appointment.startTime,
-                                "h:mm a"
-                              )}{" "}
-                              - {formatDateTime(appointment.endTime, "h:mm a")}
-                              <span className="mx-2">•</span>
-                              <div className="flex items-center gap-1">
-                                {getAppointmentIcon(appointment.type)}
-                                <span>
-                                  {appointment.type || "Consultation"}
-                                </span>
+                    filteredAppointments.map((appointment) => {
+                      const isNear = isNearAppointment(appointment.startTime);
+                      return (
+                        <div
+                          key={appointment.id}
+                          className={`flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 ${
+                            isNear && appointment.status === "CONFIRMED"
+                              ? "border-amber-500 bg-amber-50"
+                              : ""
+                          }`}
+                        >
+                          <div className="flex items-center">
+                            <div>
+                              <p className="font-medium">
+                                {appointment.user?.fullName ||
+                                  "User " + appointment.userId.slice(-4)}
+                              </p>
+                              <div className="flex items-center text-sm text-gray-500">
+                                <Clock className="h-3 w-3 mr-1" />
+                                {formatDateTime(
+                                  appointment.startTime,
+                                  "h:mm a"
+                                )}{" "}
+                                -{" "}
+                                {formatDateTime(appointment.endTime, "h:mm a")}
+                                <span className="mx-2">•</span>
+                                <div className="flex items-center gap-1">
+                                  {getAppointmentIcon(appointment.type)}
+                                  <span>
+                                    {appointment.type || "Consultation"}
+                                  </span>
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
-                        <div className="flex items-center">
-                          <Badge
-                            className={getStatusColor(appointment.status)}
-                            variant="outline"
-                          >
-                            {(appointment.status || "PENDING")
-                              .charAt(0)
-                              .toUpperCase() +
-                              (appointment.status || "PENDING")
-                                .slice(1)
-                                .toLowerCase()}
-                          </Badge>
-                          <div className="flex ml-4">
-                            <Link to={`/appointments/${appointment.id}`}>
-                              <Button variant="outline" size="sm">
-                                View Details
-                              </Button>
-                            </Link>
+                          <div className="flex items-center">
+                            <Badge
+                              className={getStatusColor(appointment.status)}
+                              variant="outline"
+                            >
+                              {(appointment.status || "PENDING")
+                                .charAt(0)
+                                .toUpperCase() +
+                                (appointment.status || "PENDING")
+                                  .slice(1)
+                                  .toLowerCase()}
+                            </Badge>
+                            {isNear && appointment.status === "CONFIRMED" && (
+                              <Badge className="ml-2 bg-amber-100 text-amber-800">
+                                Starting Soon
+                              </Badge>
+                            )}
+                            <div className="flex ml-4">
+                              <Link to={`/appointments/${appointment.id}`}>
+                                <Button variant="outline" size="sm">
+                                  View Details
+                                </Button>
+                              </Link>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                   ) : (
                     <div className="text-center py-10 border rounded-lg">
                       <p className="text-gray-500">
@@ -495,111 +527,140 @@ export default function Appointment() {
                             <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200"></div>
                             <div className="space-y-8 pl-8">
                               {groupedAppointments[dateKey].map(
-                                (appointment) => (
-                                  <div
-                                    key={appointment.id}
-                                    className="relative"
-                                  >
-                                    <div className="p-4 border rounded-lg hover:bg-gray-50">
-                                      <div className="flex justify-between items-start">
-                                        <div>
-                                          <p className="font-medium text-blue-600">
-                                            {formatDateTime(
-                                              appointment.startTime,
-                                              "h:mm a"
-                                            )}{" "}
-                                            -{" "}
-                                            {formatDateTime(
-                                              appointment.endTime,
-                                              "h:mm a"
-                                            )}
-                                          </p>
-                                          <div className="flex items-center gap-2 mt-1">
-                                            <Avatar className="h-6 w-6">
-                                              <AvatarImage
-                                                src={
-                                                  appointment.user?.avatar ||
-                                                  "/placeholder.svg"
-                                                }
-                                              />
-                                              <AvatarFallback>
-                                                {appointment.user?.fullName?.charAt(
-                                                  0
-                                                ) || "P"}
-                                              </AvatarFallback>
-                                            </Avatar>
-                                            <p className="font-medium">
-                                              {appointment.user?.fullName ||
-                                                "User " +
-                                                  appointment.userId.slice(-4)}
+                                (appointment) => {
+                                  const isNear = isNearAppointment(
+                                    appointment.startTime
+                                  );
+                                  return (
+                                    <div
+                                      key={appointment.id}
+                                      className="relative"
+                                    >
+                                      <div
+                                        className={`p-4 border rounded-lg hover:bg-gray-50 ${
+                                          isNear &&
+                                          appointment.status === "CONFIRMED"
+                                            ? "border-amber-500 bg-amber-50"
+                                            : ""
+                                        }`}
+                                      >
+                                        <div className="flex justify-between items-start">
+                                          <div>
+                                            <div className="flex items-center">
+                                              <p className="font-medium text-blue-600">
+                                                {formatDateTime(
+                                                  appointment.startTime,
+                                                  "h:mm a"
+                                                )}{" "}
+                                                -{" "}
+                                                {formatDateTime(
+                                                  appointment.endTime,
+                                                  "h:mm a"
+                                                )}
+                                              </p>
+                                              {isNear &&
+                                                appointment.status ===
+                                                  "CONFIRMED" && (
+                                                  <Badge
+                                                    className="ml-2 bg-amber-100 text-amber-800"
+                                                    variant="outline"
+                                                  >
+                                                    Starting Soon
+                                                  </Badge>
+                                                )}
+                                            </div>
+                                            <div className="flex items-center gap-2 mt-1">
+                                              <Avatar className="h-6 w-6">
+                                                <AvatarImage
+                                                  src={
+                                                    appointment.user?.avatar ||
+                                                    "/placeholder.svg"
+                                                  }
+                                                />
+                                                <AvatarFallback>
+                                                  {appointment.user?.fullName?.charAt(
+                                                    0
+                                                  ) || "P"}
+                                                </AvatarFallback>
+                                              </Avatar>
+                                              <p className="font-medium">
+                                                {appointment.user?.fullName ||
+                                                  "User " +
+                                                    appointment.userId.slice(
+                                                      -4
+                                                    )}
+                                              </p>
+                                            </div>
+                                            <p className="text-sm text-gray-500 mt-1">
+                                              Email:{" "}
+                                              {appointment.user?.email || "N/A"}
                                             </p>
-                                          </div>
-                                          <p className="text-sm text-gray-500 mt-1">
-                                            Email:{" "}
-                                            {appointment.user?.email || "N/A"}
-                                          </p>
-                                          {appointment.issues && (
-                                            <div className="mt-2">
-                                              <p className="text-sm text-gray-700 font-medium">
-                                                Issues:
-                                              </p>
-                                              <p className="text-sm text-gray-600">
-                                                {appointment.issues}
-                                              </p>
-                                            </div>
-                                          )}
-                                          {appointment.notes && (
-                                            <div className="mt-2">
-                                              <p className="text-sm text-gray-700 font-medium">
-                                                Notes:
-                                              </p>
-                                              <p className="text-sm text-gray-600">
-                                                {appointment.notes}
-                                              </p>
-                                            </div>
-                                          )}
-                                        </div>
-                                        <div className="flex flex-col items-end">
-                                          <Badge
-                                            className={getStatusColor(
-                                              appointment.status
+                                            {appointment.issues && (
+                                              <div className="mt-2">
+                                                <p className="text-sm text-gray-700 font-medium">
+                                                  Issues:
+                                                </p>
+                                                <p className="text-sm text-gray-600">
+                                                  {appointment.issues}
+                                                </p>
+                                              </div>
                                             )}
-                                            variant="outline"
-                                          >
-                                            {(appointment.status || "PENDING")
-                                              .charAt(0)
-                                              .toUpperCase() +
-                                              (appointment.status || "PENDING")
-                                                .slice(1)
-                                                .toLowerCase()}
-                                          </Badge>
-                                          {appointment.paymentStatus && (
+                                            {appointment.notes && (
+                                              <div className="mt-2">
+                                                <p className="text-sm text-gray-700 font-medium">
+                                                  Notes:
+                                                </p>
+                                                <p className="text-sm text-gray-600">
+                                                  {appointment.notes}
+                                                </p>
+                                              </div>
+                                            )}
+                                          </div>
+                                          <div className="flex flex-col items-end">
                                             <Badge
-                                              className="mt-2 bg-green-50 text-green-700"
+                                              className={getStatusColor(
+                                                appointment.status
+                                              )}
                                               variant="outline"
                                             >
-                                              {appointment.paymentStatus}
+                                              {(appointment.status || "PENDING")
+                                                .charAt(0)
+                                                .toUpperCase() +
+                                                (
+                                                  appointment.status ||
+                                                  "PENDING"
+                                                )
+                                                  .slice(1)
+                                                  .toLowerCase()}
                                             </Badge>
-                                          )}
-                                          {appointment.fees && (
-                                            <p className="text-sm font-medium mt-2">
-                                              ${appointment.fees}
-                                            </p>
-                                          )}
+                                            {appointment.paymentStatus && (
+                                              <Badge
+                                                className="mt-2 bg-green-50 text-green-700"
+                                                variant="outline"
+                                              >
+                                                {appointment.paymentStatus}
+                                              </Badge>
+                                            )}
+                                            {appointment.fees && (
+                                              <p className="text-sm font-medium mt-2">
+                                                ${appointment.fees}
+                                              </p>
+                                            )}
+                                          </div>
+                                        </div>
+                                        <div className="flex mt-4">
+                                          <Link
+                                            to={`/appointments/${appointment.id}`}
+                                          >
+                                            <Button variant="outline" size="sm">
+                                              View Details
+                                            </Button>
+                                          </Link>
                                         </div>
                                       </div>
-                                      <div className="flex mt-4">
-                                        <Link
-                                          to={`/appointments/${appointment.id}`}
-                                        >
-                                          <Button variant="outline" size="sm">
-                                            View Details
-                                          </Button>
-                                        </Link>
-                                      </div>
                                     </div>
-                                  </div>
-                                )
+                                  );
+                                }
                               )}
                             </div>
                           </div>
