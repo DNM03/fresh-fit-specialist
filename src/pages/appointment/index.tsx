@@ -97,7 +97,7 @@ export default function Appointment() {
     new Date()
   );
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("confirmed");
   // const [searchQuery, setSearchQuery] = useState("");
 
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -468,7 +468,7 @@ export default function Appointment() {
                           const today = new Date();
                           setSelectedDate(today);
                           setCurrentMonth(today);
-                          setStatusFilter("all");
+                          setStatusFilter("confirmed");
                           // setSearchQuery("");
                         }}
                       >
@@ -617,7 +617,7 @@ export default function Appointment() {
                             const today = new Date();
                             setSelectedDate(today);
                             setCurrentMonth(today);
-                            setStatusFilter("all");
+                            setStatusFilter("confirmed");
                             // setSearchQuery("");
                           }}
                         >
