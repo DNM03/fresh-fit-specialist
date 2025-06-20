@@ -691,7 +691,7 @@ export default function AppointmentDetail() {
                           </span>
                         </div>
                         <p className="text-gray-600 text-sm">
-                          {appointment?.appointmentReview?.comment ||
+                          {appointment?.appointmentReview?.content ||
                             "No comments provided"}
                         </p>
                       </>
