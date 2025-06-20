@@ -215,6 +215,19 @@ export default function Availability() {
       return;
     }
 
+    const selectedDate = new Date(editFormData.date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (selectedDate < today) {
+      toast.error("Cannot select a date in the past", {
+        style: {
+          background: "#cc3131",
+          color: "#fff",
+        },
+      });
+      return;
+    }
+
     // No need to check if start time < end time since it's automatically calculated
 
     setIsUpdating(true);
