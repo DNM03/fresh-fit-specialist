@@ -9,12 +9,12 @@ import {
   Video,
   VideoOff,
   PhoneOff,
-  LayoutGrid,
+  // LayoutGrid,
   // Settings,
   // Users,
-  MessageSquare,
-  Share2,
-  MoreVertical,
+  // MessageSquare,
+  // Share2,
+  // MoreVertical,
 } from "lucide-react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 
@@ -46,7 +46,7 @@ const VideoCallPage: React.FC = () => {
   const remoteVideoRefs = useRef<{ [key: string]: HTMLVideoElement | null }>(
     {}
   );
-  const [showChat, setShowChat] = useState<boolean>(false);
+  // const [showChat, setShowChat] = useState<boolean>(false);
 
   // Create a stable streamID when component mounts
   const [localStreamID, setLocalStreamID] = useState<string>("");
@@ -277,9 +277,9 @@ const VideoCallPage: React.FC = () => {
       console.error("Failed to toggle camera:", error);
     }
   };
-  const toggleChat = () => {
-    setShowChat(!showChat);
-  };
+  // const toggleChat = () => {
+  //   setShowChat(!showChat);
+  // };
 
   const renderLayout = () => {
     const remoteStreamArray = Object.entries(remoteStreams);
@@ -335,7 +335,7 @@ const VideoCallPage: React.FC = () => {
               />
               <div className="absolute bottom-4 left-4 bg-black/50 text-white px-3 py-1 rounded text-sm">
                 {!isMicOn && <MicOff size={16} className="text-red-500" />}
-                <span>You (Doctor)</span>
+                <span>You (Specialist)</span>
               </div>
             </div>
           )}
@@ -361,11 +361,11 @@ const VideoCallPage: React.FC = () => {
         </div>
 
         {/* Chat sidebar */}
-        {showChat && (
+        {/* {showChat && (
           <div className="w-80 bg-slate-800 border-l border-slate-700 flex flex-col">
-            {/* Chat content */}
+            Chat content
           </div>
-        )}
+        )} */}
       </div>
     );
   };
@@ -374,7 +374,7 @@ const VideoCallPage: React.FC = () => {
     <div className="flex flex-col h-screen text-primary">
       <div className="h-14  flex items-center justify-between px-4 ">
         <div className="flex items-center gap-3">
-          <h1 className="font-medium text-lg">Doctor Video Console</h1>
+          <h1 className="font-medium text-lg">Specialist Video Console</h1>
           {isInRoom && (
             <div className="bg-green-600/20 text-green-400 text-xs px-2 py-1 rounded-full flex items-center gap-1">
               <span className="h-2 w-2 rounded-full bg-green-500"></span>
@@ -426,12 +426,12 @@ const VideoCallPage: React.FC = () => {
         <>
           {renderLayout()}
 
-          <div className="h-20  flex items-center justify-between px-6">
-            <div className="flex items-center gap-3">
+          <div className="h-20  flex items-center justify-center px-6">
+            {/* <div className="flex items-center gap-3">
               <Button variant="ghost" size="icon" className="text-primary">
                 <LayoutGrid size={20} />
               </Button>
-            </div>
+            </div> */}
 
             <div className="flex items-center gap-4">
               <Button
@@ -466,7 +466,7 @@ const VideoCallPage: React.FC = () => {
               </Button>
             </div>
 
-            <div className="flex items-center gap-3">
+            {/* <div className="flex items-center gap-3">
               <Button
                 variant="ghost"
                 size="icon"
@@ -483,7 +483,7 @@ const VideoCallPage: React.FC = () => {
               <Button variant="ghost" size="icon" className="text-primary">
                 <MoreVertical size={20} />
               </Button>
-            </div>
+            </div> */}
           </div>
         </>
       )}
