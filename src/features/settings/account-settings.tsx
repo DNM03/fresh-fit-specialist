@@ -90,9 +90,6 @@ export function AccountSettings() {
         });
 
         toast.success("Password updated successfully", {
-          description:
-            "Your password has been changed. Please use your new password next time you log in.",
-
           style: {
             background: "#3ac76b",
             color: "#fff",
