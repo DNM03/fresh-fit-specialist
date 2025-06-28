@@ -403,7 +403,7 @@ export default function Dashboard() {
               </div>
               <Button
                 className="mt-4 bg-green-600 hover:bg-green-700 text-white w-full"
-                onClick={() => navigate("/appointment")}
+                onClick={() => navigate("/appointments")}
               >
                 View Appointments
               </Button>
@@ -439,7 +439,7 @@ export default function Dashboard() {
           <CardHeader className="pb-2">
             <div className="flex justify-between items-center">
               <CardTitle>Today's Appointments</CardTitle>
-              <Link to="/appointment">
+              <Link to="/appointments">
                 <Button variant="ghost" className="text-sm text-blue-600">
                   View All
                 </Button>
@@ -508,7 +508,7 @@ export default function Dashboard() {
                             .slice(1)
                             .toLowerCase()}
                       </Badge>
-                      <Link to={`/appointment/detail/${slot.appointment.id}`}>
+                      <Link to={`/appointments/${slot.appointment.id}`}>
                         <Button variant="ghost" size="sm" className="ml-2">
                           Details
                         </Button>
