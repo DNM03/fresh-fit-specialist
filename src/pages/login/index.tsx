@@ -61,6 +61,8 @@ function LoginPage() {
       let errorMsg = "Email or password is incorrect. Please try again.";
       if (error.response?.status === 401) {
         errorMsg = "Email or password is incorrect. Please try again.";
+      } else if (error.response?.status === 422) {
+        errorMsg = "Email or password is incorrect. Please try again.";
       } else if (error.response?.status === 429) {
         errorMsg = "Too many attempts. Please try again later.";
       } else if (error.response?.status === 403) {
