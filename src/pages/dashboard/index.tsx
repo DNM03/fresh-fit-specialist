@@ -28,9 +28,19 @@ import { userService } from "@/services";
 import specialistService from "@/services/specialist.service";
 
 // Helper function to format date-time
-function formatDateTime(isoString: string, formatStr: string = "PPpp"): string {
+function formatDateTime(
+  dateString: string,
+  formatStr: string = "PPpp"
+): string {
   try {
-    return format(parseISO(isoString), formatStr);
+    const timeMatch = dateString.match(/(\d{2}):(\d{2}):(\d{2})/);
+    if (timeMatch) {
+      const [, hours, minutes] = timeMatch;
+      const today = new Date();
+      today.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+      return format(today, formatStr);
+    }
+    throw new Error("Time not found");
   } catch (error) {
     console.error("Invalid date format:", error);
     return "Invalid date";
